@@ -632,28 +632,7 @@ def crear_radar_zscore_simple(zscores_radar, jugador_nombre):
 		paper_bgcolor=COLORES['fondo_oscuro'],
 		font=dict(color="white", family="Roboto"),
 		height=600,
-		margin=dict(t=100, b=80, l=120, r=80)  # Más margen izquierdo para la leyenda
-	)
-	
-	# Agregar leyenda minimalista en la esquina superior izquierda
-	fig.add_annotation(
-		text="<span style='color: rgba(255,255,255,0.8); font-size: 11px;'>" +
-			 "Z-Score: Desviaciones del promedio<br>" +
-			 "0 = Promedio | +1 = Superior | -1 = Inferior</span>",
-		x=0.01,
-		y=0.99,
-		xref="paper",
-		yref="paper",
-		xanchor="left",
-		yanchor="top",
-		showarrow=False,
-		font=dict(size=10, color="rgba(255,255,255,0.8)", family="Roboto"),
-		align="left",
-		bgcolor="rgba(17, 24, 39, 0.9)",
-		bordercolor="rgba(255,255,255,0.2)",
-		borderwidth=1,
-		borderpad=6,
-		opacity=0.95
+		margin=dict(t=100, b=80, l=80, r=80)  # Márgenes equilibrados sin leyenda
 	)
 	
 	return fig

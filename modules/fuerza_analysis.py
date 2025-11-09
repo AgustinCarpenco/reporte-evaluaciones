@@ -69,7 +69,7 @@ def analizar_fuerza(df, datos_jugador, jugador, categoria):
 		<div style='background: linear-gradient(90deg, rgba(220, 38, 38, 0.8), rgba(17, 24, 39, 0.8));
 					border-left: 4px solid rgba(220, 38, 38, 1); padding: 15px; border-radius: 8px;'>
 			<h4 style='margin: 0; color: white; font-size: 18px; font-weight: bold;'>
-				⚽ Perfil Z-Score - Comparación vs Grupo
+				Perfil Z-Score - Comparación vs Grupo
 			</h4>
 			<p style='margin: 5px 0 0 0; color: rgba(255,255,255,0.8); font-size: 14px;'>
 				Radar simplificado con 5 métricas principales de fuerza
@@ -100,7 +100,7 @@ def analizar_fuerza(df, datos_jugador, jugador, categoria):
 			
 			# Información resumida debajo del radar
 			if zscores_radar:
-				st.markdown("### 📊 Resumen de Rendimiento")
+				st.markdown("### Resumen de Rendimiento")
 				
 				# Crear métricas en columnas
 				cols = st.columns(len(zscores_radar))
@@ -139,12 +139,12 @@ def analizar_fuerza(df, datos_jugador, jugador, categoria):
 		
 		else:
 			# Fallback si no hay datos suficientes
-			st.warning("⚠️ Datos insuficientes para Z-Scores. Se requieren al menos 3 jugadores en la categoría.")
+			st.warning("Datos insuficientes para Z-Scores. Se requieren al menos 3 jugadores en la categoría.")
 			
 			# Mostrar mensaje centrado
 			col1, col_center, col2 = st.columns([1, 2, 1])
 			with col_center:
-				st.info("📊 Agregue más jugadores a la categoría para habilitar el análisis Z-Score.")
+				st.info("Agregue más jugadores a la categoría para habilitar el análisis Z-Score.")
 		
 
 

@@ -31,11 +31,11 @@ def cargar_evaluaciones(path_excel):
 		for col in df_evaluacion.columns:
 			if df_evaluacion[col].dtype == 'object':
 				# Intentar convertir a numérico si es posible
-				numeric_col = pd.to_numeric(df_evaluacion[col], errors='ignore')
-				if numeric_col.dtype != 'object':
+				try:
+					numeric_col = pd.to_numeric(df_evaluacion[col])
 					df_evaluacion[col] = numeric_col
-				else:
-					# Optimizar strings como categorías si tienen pocos valores únicos
+				except (ValueError, TypeError):
+					# Si no es convertible a numérico, optimizar strings como categorías si tienen pocos valores únicos
 					unique_ratio = len(df_evaluacion[col].unique()) / len(df_evaluacion[col])
 					if unique_ratio < 0.5:  # Si menos del 50% son valores únicos
 						df_evaluacion[col] = df_evaluacion[col].astype('category')

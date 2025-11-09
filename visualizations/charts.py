@@ -5,7 +5,7 @@ Módulo de visualizaciones - Gráficos y charts
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
-from config.settings import CACHE_TTL, COLORES, Z_SCORE_METRICAS, PLOTLY_CONFIG
+from config.settings import CACHE_TTL, COLORES, Z_SCORE_METRICAS, ESCUDO_PATH
 from utils.ui_utils import get_base64_image
 
 @st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando gráfico de fuerza...")

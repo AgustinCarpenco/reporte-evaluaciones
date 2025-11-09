@@ -1,159 +1,136 @@
 """
-Aplicación principal - Reporte de lesiones - Atlético Colón
-Club Atlético Colón - Base limpia para desarrollo
+Aplicación principal refactorizada - Evaluación Física Integral
+Club Atlético Colón
 """
 
 import streamlit as st
-from utils.ui_utils import aplicar_estilos_css, crear_header_principal, crear_footer, configurar_tema_oscuro
-from components.filters_ui import mostrar_filtros_principales
-from modules.kpi_cards import mostrar_kpi_cantidad_lesiones, mostrar_kpi_dias_lesionado, mostrar_kpi_dias_lesion_seleccionada, mostrar_kpi_lesiones_activas
-from modules.grafico_evolutivo import mostrar_grafico_evolutivo
-from modules.grafico_ranking_lesionados import mostrar_grafico_ranking_lesionados
-from modules.grafico_region_lesiones import mostrar_grafico_region_lesiones
+
+# Importar módulos refactorizados
+from config.settings import DATA_PATH
+from utils.ui_utils import inicializar_session_state, aplicar_estilos_css, crear_header_principal, crear_footer, configurar_tema_oscuro
+from utils.data_utils import cargar_datos_optimizado
+from components.sidebar import crear_sidebar
+from modules.fuerza_analysis import analizar_fuerza
 
 # ========= CONFIGURACIÓN DE PÁGINA ==========
 st.set_page_config(
-	page_title="Reporte de lesiones - Atlético Colón",
-	#page_icon="⚽",
+	page_title="Evaluación Física Integral - Atlético Colón",
+	page_icon="⚽",
 	layout="wide",
 	initial_sidebar_state="expanded"
 )
 
+def crear_header_seccion(seccion, jugador, categoria):
+	"""Crea header de sección para análisis individual"""
+	st.markdown(f"""
+	<div style='background: linear-gradient(135deg, rgba(220, 38, 38, 0.2), rgba(31, 41, 55, 0.2)); 
+				padding: 20px; border-radius: 15px; margin-bottom: 40px; margin-top: 30px;
+				border-left: 5px solid rgba(220, 38, 38, 1);'>
+		<h2 style='margin: 0; color: white; font-weight: bold;'>
+			Perfil Individual - {jugador}
+		</h2>
+		<p style='margin: 5px 0 0 0; color: rgba(255,255,255,0.8); font-size: 16px;'>
+			Análisis de {seccion} - Categoría: {categoria}
+		</p>
+	</div>
+	""", unsafe_allow_html=True)
+
 def main():
-	"""Función principal de la aplicación - Base limpia"""
+	"""Función principal de la aplicación"""
 	
-	# Header principal - Lo más arriba posible para ganar espacio
-	crear_header_principal()
-	
-	# Configurar tema oscuro
+	# Configurar tema oscuro ANTES que todo
 	configurar_tema_oscuro()
+	
+	# Inicializar configuración
+	inicializar_session_state()
 	aplicar_estilos_css()
 	
-	# ===== GRÁFICO EVOLUTIVO (PRIMERO) =====
-	# Separador visual para el gráfico evolutivo
-	st.markdown(
-		"""
-		<p style='
-			color:#9ca3af;
-			font-size:13px;
-			text-transform:uppercase;
-			letter-spacing:1px;
-			margin-top:10px;
-			margin-bottom:4px;
-			text-align:left;
-		'>
-			Análisis temporal
-		</p>
-		<hr style='
-			border:none;
-			height:2px;
-			background:linear-gradient(to right, #dc2626, #1f2937);
-			margin:8px 0 25px 0;
-			border-radius:2px;
-		'>
-		""",
-		unsafe_allow_html=True
-	)
+	# Cargar datos
+	df = cargar_datos_optimizado(DATA_PATH)
 	
-	# Gráfico evolutivo de lesiones (sin depender de filtros)
-	mostrar_grafico_evolutivo()
+	# Crear sidebar y obtener selecciones
+	categoria, jugador, vista, seccion, exportar = crear_sidebar(df)
 	
-	# ===== FILTROS (DESPUÉS DEL GRÁFICO) =====
-	# Mostrar filtros principales (jugador, evento de lesión y tipo informativo)
-	selected_player, selected_event, tipo_lesion, fecha_inicio, fecha_fin = mostrar_filtros_principales()
+	# Crear header principal
+	crear_header_principal()
 	
-	# ===== INDICADORES DEL JUGADOR =====
-	# Separador visual entre filtros y KPIs
-	st.markdown(
-		"""
-		<p style='
-			color:#9ca3af;
-			font-size:13px;
-			text-transform:uppercase;
-			letter-spacing:1px;
-			margin-top:30px;
-			margin-bottom:4px;
-			text-align:left;
-		'>
-			Indicadores del jugador
-		</p>
-		<hr style='
-			border:none;
-			height:2px;
-			background:linear-gradient(to right, #dc2626, #1f2937);
-			margin:8px 0 25px 0;
-			border-radius:2px;
-		'>
-		""",
-		unsafe_allow_html=True
-	)
+	# ========= CONTENIDO PRINCIPAL ==========
+	if vista == "Perfil del Jugador":
+		# Header de sección
+		crear_header_seccion(seccion, jugador, categoria)
+		
+		# Obtener datos del jugador seleccionado
+		datos_jugador = df[(df["categoria"] == categoria) & (df["Deportista"] == jugador)].iloc[0]
+		
+		# Análisis por sección
+		if seccion == "Fuerza":
+			analizar_fuerza(df, datos_jugador, jugador, categoria)
+			
+		elif seccion == "Movilidad":
+			st.markdown("### 🔧 Módulo en Desarrollo")
+			st.info("El análisis de movilidad estará disponible próximamente.")
+			
+		elif seccion == "Funcionalidad":
+			st.markdown("### 🔧 Módulo en Desarrollo") 
+			st.info("El análisis de funcionalidad estará disponible próximamente.")
 	
-	# Mostrar nombre del jugador seleccionado centrado y más grande
-	if selected_player:
-		st.markdown(
-			f"<h1 style='text-align:center; color:white; font-size:40px; margin-top:25px; margin-bottom:40px;'>{selected_player}</h1>",
-			unsafe_allow_html=True
-		)
+	elif vista == "Perfil del Grupo":
+		# Header de sección grupal
+		st.markdown(f"""
+		<div style='background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(16, 185, 129, 0.2)); 
+					padding: 20px; border-radius: 15px; margin-bottom: 25px; 
+					border-left: 5px solid rgba(59, 130, 246, 1);'>
+			<h2 style='margin: 0; color: white; font-weight: bold;'>
+				👥 Perfil del Grupo - {categoria}
+			</h2>
+			<p style='margin: 5px 0 0 0; color: rgba(255,255,255,0.8); font-size: 16px;'>
+				Análisis agregado de {seccion} - Valores promedio y estadísticas grupales
+			</p>
+		</div>
+		""", unsafe_allow_html=True)
+		
+		# Análisis por sección
+		if seccion == "Fuerza":
+			st.markdown("### 🔧 Módulo en Desarrollo")
+			st.info("El análisis grupal de fuerza estará disponible próximamente.")
+			
+		elif seccion == "Movilidad":
+			st.markdown("### 🔧 Módulo en Desarrollo")
+			st.info("El análisis grupal de movilidad estará disponible próximamente.")
+			
+		elif seccion == "Funcionalidad":
+			st.markdown("### 🔧 Módulo en Desarrollo") 
+			st.info("El análisis grupal de funcionalidad estará disponible próximamente.")
+		
+	elif vista == "Comparación Jugador vs Grupo":
+		# Header de sección comparativa
+		crear_header_seccion(seccion, jugador, categoria)
+		
+		# Obtener datos del jugador seleccionado
+		datos_jugador = df[(df["categoria"] == categoria) & (df["Deportista"] == jugador)].iloc[0]
+		
+		# Análisis por sección
+		if seccion == "Fuerza":
+			st.markdown("### 🔧 Módulo en Desarrollo")
+			st.info("La comparación de fuerza estará disponible próximamente.")
+			
+		elif seccion == "Movilidad":
+			st.markdown("### 🔧 Módulo en Desarrollo")
+			st.info("La comparación de movilidad estará disponible próximamente.")
+			
+		elif seccion == "Funcionalidad":
+			st.markdown("### 🔧 Módulo en Desarrollo") 
+			st.info("La comparación de funcionalidad estará disponible próximamente.")
 	
-	# Primera fila de KPIs (2 columnas)
-	col1, col2 = st.columns(2)
-	
-	with col1:
-		mostrar_kpi_cantidad_lesiones(selected_player)
-	
-	with col2:
-		mostrar_kpi_dias_lesionado(selected_player)
-	
-	# Segunda fila de KPIs (2 columnas)
-	col3, col4 = st.columns(2)
-	
-	with col3:
-		mostrar_kpi_dias_lesion_seleccionada(selected_player, selected_event)
-	
-	with col4:
-		mostrar_kpi_lesiones_activas(selected_player)
-	
-	# ===== GRÁFICOS COMPARATIVOS =====
-	# Separador visual para gráficos comparativos
-	st.markdown(
-		"""
-		<p style='
-			color:#9ca3af;
-			font-size:13px;
-			text-transform:uppercase;
-			letter-spacing:1px;
-			margin-top:40px;
-			margin-bottom:4px;
-			text-align:left;
-		'>
-			Comparativa general de lesiones
-		</p>
-		<hr style='
-			border:none;
-			height:2px;
-			background:linear-gradient(to right, #dc2626, #1f2937);
-			margin:8px 0 25px 0;
-			border-radius:2px;
-		'>
-		""",
-		unsafe_allow_html=True
-	)
-	
-	# Gráficos en dos columnas
-	col1, col2 = st.columns(2)
-	
-	with col1:
-		mostrar_grafico_ranking_lesionados()
-	
-	with col2:
-		mostrar_grafico_region_lesiones()
-	
-	# Sidebar vacío
-	with st.sidebar:
-		pass
+	else:
+		st.warning("Esta visualización detallada está disponible solo en el modo 'Perfil del Jugador'.")
 	
 	# Footer
 	crear_footer()
+	
+	# Manejo del botón exportar
+	if exportar:
+		st.success("🔧 Funcionalidad de exportación en desarrollo")
 
 if __name__ == "__main__":
 	main()

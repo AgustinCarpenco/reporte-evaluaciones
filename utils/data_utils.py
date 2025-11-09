@@ -19,8 +19,27 @@ def cargar_evaluaciones(path_excel):
 		st.stop()
 	
 	try:
-		# Cargar desde la nueva hoja EVALUACION 2910
-		df_evaluacion = pd.read_excel(path_excel, sheet_name="EVALUACION 2910")
+		# Cargar desde la nueva hoja EVALUACION 2910 con optimizaciones
+		df_evaluacion = pd.read_excel(
+			path_excel, 
+			sheet_name="EVALUACION 2910",
+			engine='openpyxl',  # Motor más rápido para archivos .xlsx
+			na_values=['', ' ', 'N/A', 'n/a', 'NULL', 'null']  # Valores nulos explícitos
+		)
+		
+		# Optimizar tipos de datos para reducir memoria
+		for col in df_evaluacion.columns:
+			if df_evaluacion[col].dtype == 'object':
+				# Intentar convertir a numérico si es posible
+				numeric_col = pd.to_numeric(df_evaluacion[col], errors='ignore')
+				if numeric_col.dtype != 'object':
+					df_evaluacion[col] = numeric_col
+				else:
+					# Optimizar strings como categorías si tienen pocos valores únicos
+					unique_ratio = len(df_evaluacion[col].unique()) / len(df_evaluacion[col])
+					if unique_ratio < 0.5:  # Si menos del 50% son valores únicos
+						df_evaluacion[col] = df_evaluacion[col].astype('category')
+		
 	except Exception as e:
 		st.error(f"❌ Error al leer el archivo Excel: {str(e)}")
 		st.info("💡 Verifica que la hoja 'EVALUACION 2910' exista en el archivo")

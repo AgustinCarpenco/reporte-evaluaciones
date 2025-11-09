@@ -41,6 +41,9 @@ def analizar_fuerza(df, datos_jugador, jugador, categoria):
 				metricas_seleccionadas.append(metricas_display[i])
 
 	if metricas_seleccionadas:
+		# Espaciado entre selector y gráfico
+		st.markdown("<br>", unsafe_allow_html=True)
+		
 		# Optimización con cache - crear hash del jugador
 		datos_jugador_dict = datos_jugador.to_dict() if hasattr(datos_jugador, 'to_dict') else dict(datos_jugador)
 		
@@ -57,7 +60,7 @@ def analizar_fuerza(df, datos_jugador, jugador, categoria):
 		st.markdown("</div>", unsafe_allow_html=True)
 		
 		# === RADAR CHART Z-SCORES ===
-		st.markdown("<br>", unsafe_allow_html=True)
+		st.markdown("<br><br>", unsafe_allow_html=True)
 		
 		# Header para el radar chart
 		st.markdown(f"""

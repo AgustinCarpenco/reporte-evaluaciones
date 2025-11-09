@@ -12,12 +12,12 @@ ESCUDO_PATH = os.path.join(BASE_DIR, "data", "escudo.png")
 
 # ========= CONFIGURACIÓN DE CACHE ==========
 CACHE_TTL = {
-	'datos_principales': 3600,  # 1 hora
-	'graficos': 1800,          # 30 minutos
-	'estadisticas': 900,       # 15 minutos
-	'selecciones': 300,        # 5 minutos
-	'preparacion_datos': 600,  # 10 minutos
-	'jugadores_categoria': 1800 # 30 minutos
+	'datos_principales': 7200,  # 2 horas - datos cambian poco
+	'graficos': 3600,          # 1 hora - gráficos son costosos
+	'estadisticas': 1800,      # 30 minutos - cálculos estadísticos
+	'selecciones': 600,        # 10 minutos - selecciones de usuario
+	'preparacion_datos': 1800, # 30 minutos - procesamiento de datos
+	'jugadores_categoria': 3600 # 1 hora - listas de jugadores
 }
 
 # ========= MAPEO DE COLUMNAS NUEVA EVALUACIÓN ==========

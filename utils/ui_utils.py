@@ -110,7 +110,7 @@ def crear_header_principal():
 		<div class='header-container'>
 			<img src='data:image/png;base64,{escudo_base64}' class='header-logo'/>
 			<div>
-				<h1>REPORTE DE LESIONES</h1>
+				<h1>EVALUACIÓN FÍSICA INTEGRAL</h1>
 				<h3>Club Atlético Colón</h3>
 			</div>
 		</div>
@@ -127,7 +127,7 @@ def crear_footer():
 				padding: 15px; border-radius: 10px; text-align: center; margin-top: 40px;
 				box-shadow: 0 4px 16px rgba(0,0,0,0.2);'>
 		<p style='margin: 0; color: rgba(255,255,255,0.8); font-size: 12px;'>
-			© 2025 Club Atlético Colón - Sistema desarrollado para el Staff Medico | Hechor por Agustin Carpenco v1.0
+			© 2025 Club Atlético Colón - Evaluación Física Integral | Desarrollado por Agustin Carpenco v1.0
 		</p>
 	</div>
 	""", unsafe_allow_html=True)

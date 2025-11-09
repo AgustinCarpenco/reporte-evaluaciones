@@ -67,6 +67,35 @@ COLORES = {
 }
 
 # ========= CONFIGURACIÓN DE Z-SCORES ==========
+# Mapeo: Columna original en Excel → Etiqueta para visualización
+METRICAS_ZSCORE_FUERZA = {
+	'CUAD DER (N)': 'CUAD Der',
+	'CUAD IZQ (N)': 'CUAD Izq',
+	'WOLLIN DER': 'ISQ Der',
+	'WOLLIN IZQ': 'ISQ Izq',
+	'F PICO DER (IMTP) (N)': 'IMTP Der',
+	'F PICO IZQ (IMTP) (N)': 'IMTP Izq',
+	'F PICO (IMTP) (N)': 'IMTP Total',
+	'FP DER (CMJ) (N)': 'CMJ FP Der',
+	'FP IZQ (CMJ) (N)': 'CMJ FP Izq',
+	'FP (CMJ) (N)': 'CMJ FP Total',
+	'FF DER (CMJ) (N)': 'CMJ FF Der',
+	'FF IZQ (CMJ) (N)': 'CMJ FF Izq',
+	'FF (CMJ) (N)': 'CMJ FF Total'
+}
+
+# Configuración simplificada para radar (máximo 5 métricas)
+METRICAS_ZSCORE_RADAR_SIMPLE = {
+	# Usar métricas totales o promediar bilaterales automáticamente
+	'F PICO (IMTP) (N)': 'IMTP',
+	'FP (CMJ) (N)': 'CMJ Propulsiva', 
+	'FF (CMJ) (N)': 'CMJ Frenado',
+	# Para bilaterales, calcular promedio automáticamente
+	'CUAD_PROMEDIO': 'CUAD',
+	'WOLLIN_PROMEDIO': 'ISQ Wollin'
+}
+
+# Configuración legacy para compatibilidad (si existe en Excel)
 Z_SCORE_METRICAS = {
 	'Z SCORE CUAD Der': 'CUAD Der',
 	'Z SCORE CUAD Izq': 'CUAD Izq',

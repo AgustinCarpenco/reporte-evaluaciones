@@ -13,7 +13,12 @@ def crear_grafico_multifuerza(datos_jugador_hash, metricas_seleccionadas, metric
 	"""Crea gráfico de multifuerza con cache optimizado"""
 	# Reconstruir datos del jugador desde hash
 	datos_jugador = datos_jugador_hash
-	barras_der, barras_izq, nombres = [], [], []
+	
+	# Separar métricas bilaterales y totales
+	metricas_bilaterales = []
+	metricas_totales = []
+	barras_der, barras_izq, nombres_bilaterales = [], [], []
+	valores_totales, nombres_totales = [], []
 	lsi_labels = {}
 
 	for metrica in metricas_seleccionadas:
@@ -21,11 +26,9 @@ def crear_grafico_multifuerza(datos_jugador_hash, metricas_seleccionadas, metric
 		if metrica in ["IMTP Total", "CMJ FP Total", "CMJ FF Total"]:
 			col_total = metricas_columnas[metrica][0]  # Usar la primera columna (son iguales)
 			val_total = datos_jugador.get(col_total, 0)
-			
-			# Para métricas totales, mostrar como una sola barra centrada
-			barras_der.append(val_total)
-			barras_izq.append(0)  # No hay lado izquierdo para totales
-			nombres.append(metrica)
+			valores_totales.append(val_total)
+			nombres_totales.append(metrica)
+			metricas_totales.append(metrica)
 			
 		# Métricas bilaterales tradicionales
 		else:
@@ -34,7 +37,8 @@ def crear_grafico_multifuerza(datos_jugador_hash, metricas_seleccionadas, metric
 			val_izq = datos_jugador.get(col_izq, 0)
 			barras_der.append(val_der)
 			barras_izq.append(val_izq)
-			nombres.append(metrica)
+			nombres_bilaterales.append(metrica)
+			metricas_bilaterales.append(metrica)
 			
 			# Calcular LSI para métricas bilaterales
 			if val_der > 0 and val_izq > 0:
@@ -43,64 +47,90 @@ def crear_grafico_multifuerza(datos_jugador_hash, metricas_seleccionadas, metric
 
 	fig = go.Figure()
 
-	fig.add_trace(go.Bar(
-		x=nombres,
-		y=barras_der,
-		name="🔴 Derecho",
-		marker=dict(
-			color=COLORES['rojo_colon'],
-			pattern=dict(
-				shape="",
-				bgcolor="rgba(220, 38, 38, 0.3)",
-				fgcolor="rgba(220, 38, 38, 1)"
+	# Agregar trazas para métricas bilaterales (si existen)
+	if nombres_bilaterales:
+		fig.add_trace(go.Bar(
+			x=nombres_bilaterales,
+			y=barras_der,
+			name="🔴 Derecho",
+			marker=dict(
+				color=COLORES['rojo_colon'],
+				pattern=dict(
+					shape="",
+					bgcolor="rgba(220, 38, 38, 0.3)",
+					fgcolor="rgba(220, 38, 38, 1)"
+				),
+				opacity=0.9
 			),
-			opacity=0.9
-		),
-		text=[f"{v:.0f} N" for v in barras_der],
-		textposition="outside",
-		textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
-		hovertemplate='<b>🔴 Derecho</b><br>%{x}: %{y:.0f} N<br><i>Lado dominante</i><extra></extra>',
-		offsetgroup=1,
-		hoverlabel=dict(
-			bgcolor="rgba(220, 38, 38, 0.9)",
-			bordercolor="rgba(220, 38, 38, 1)",
-			font=dict(color="white", family="Roboto")
-		)
-	))
+			text=[f"{v:.0f} N" for v in barras_der],
+			textposition="outside",
+			textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
+			hovertemplate='<b>🔴 Derecho</b><br>%{x}: %{y:.0f} N<br><i>Lado dominante</i><extra></extra>',
+			offsetgroup=1,
+			hoverlabel=dict(
+				bgcolor="rgba(220, 38, 38, 0.9)",
+				bordercolor="rgba(220, 38, 38, 1)",
+				font=dict(color="white", family="Roboto")
+			)
+		))
 
-	fig.add_trace(go.Bar(
-		x=nombres,
-		y=barras_izq,
-		name="⚫ Izquierdo",
-		marker=dict(
-			color=COLORES['negro_colon'],
-			pattern=dict(
-				shape="",
-				bgcolor="rgba(31, 41, 55, 0.3)",
-				fgcolor="rgba(31, 41, 55, 1)"
+		fig.add_trace(go.Bar(
+			x=nombres_bilaterales,
+			y=barras_izq,
+			name="⚫ Izquierdo",
+			marker=dict(
+				color=COLORES['negro_colon'],
+				pattern=dict(
+					shape="",
+					bgcolor="rgba(31, 41, 55, 0.3)",
+					fgcolor="rgba(31, 41, 55, 1)"
+				),
+				opacity=0.9
 			),
-			opacity=0.9
-		),
-		text=[f"{v:.0f} N" for v in barras_izq],
-		textposition="outside",
-		textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
-		hovertemplate='<b>⚫ Izquierdo</b><br>%{x}: %{y:.0f} N<br><i>Lado no dominante</i><extra></extra>',
-		offsetgroup=2,
-		hoverlabel=dict(
-			bgcolor="rgba(31, 41, 55, 0.9)",
-			bordercolor="rgba(31, 41, 55, 1)",
-			font=dict(color="white", family="Roboto")
-		)
-	))
+			text=[f"{v:.0f} N" for v in barras_izq],
+			textposition="outside",
+			textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
+			hovertemplate='<b>⚫ Izquierdo</b><br>%{x}: %{y:.0f} N<br><i>Lado no dominante</i><extra></extra>',
+			offsetgroup=2,
+			hoverlabel=dict(
+				bgcolor="rgba(31, 41, 55, 0.9)",
+				bordercolor="rgba(31, 41, 55, 1)",
+				font=dict(color="white", family="Roboto")
+			)
+		))
 
-	# LSI annotations - USANDO CÁLCULOS AUTOMÁTICOS
-	for name in nombres:
+	# Agregar traza para métricas totales (si existen) - UNA SOLA BARRA CENTRADA
+	if nombres_totales:
+		fig.add_trace(go.Bar(
+			x=nombres_totales,
+			y=valores_totales,
+			name="🟡 Total",
+			marker=dict(
+				color="rgba(255, 193, 7, 0.9)",  # Color dorado para totales
+				pattern=dict(
+					shape="",
+					bgcolor="rgba(255, 193, 7, 0.3)",
+					fgcolor="rgba(255, 193, 7, 1)"
+				),
+				opacity=0.9
+			),
+			text=[f"{v:.0f} N" for v in valores_totales],
+			textposition="outside",
+			textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
+			hovertemplate='<b>🟡 Total</b><br>%{x}: %{y:.0f} N<br><i>Valor bilateral combinado</i><extra></extra>',
+			offsetgroup=3,
+			hoverlabel=dict(
+				bgcolor="rgba(255, 193, 7, 0.9)",
+				bordercolor="rgba(255, 193, 7, 1)",
+				font=dict(color="white", family="Roboto")
+			)
+		))
+
+	# LSI annotations - SOLO PARA MÉTRICAS BILATERALES
+	for i, name in enumerate(nombres_bilaterales):
 		lsi_val = lsi_labels.get(name)
 		
-		# Solo mostrar LSI para métricas bilaterales (no para totales)
-		if lsi_val and lsi_val > 0 and name not in ["IMTP Total", "CMJ FP Total", "CMJ FF Total"]:
-			idx = nombres.index(name)
-			
+		if lsi_val and lsi_val > 0:
 			# Determinar color según rango LSI
 			if 90 <= lsi_val <= 110:  # Zona óptima
 				lsi_color = COLORES['verde_optimo']
@@ -115,7 +145,7 @@ def crear_grafico_multifuerza(datos_jugador_hash, metricas_seleccionadas, metric
 			fig.add_annotation(
 				text=f"<b>LSI: {lsi_val:.1f}%</b>",
 				x=name,
-				y=max(barras_der[idx], barras_izq[idx]) * 1.55,
+				y=max(barras_der[i], barras_izq[i]) * 1.55,
 				showarrow=False,
 				font=dict(size=11, color="white", family="Roboto", weight="bold"),
 				xanchor="center",
@@ -149,7 +179,7 @@ def crear_grafico_multifuerza(datos_jugador_hash, metricas_seleccionadas, metric
 		bargap=0.3,
 		bargroupgap=0.1,
 		title=dict(
-			text="⚽ Evaluación Física Integral – Atlético Colón ⚽<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Comparación Derecha/Izquierda – Métricas de Fuerza</span>",
+			text="⚽ Evaluación Física Integral – Atlético Colón ⚽<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Métricas de Fuerza – Bilaterales y Totales</span>",
 			font=dict(size=18, family="Roboto", weight="bold", color="rgba(220, 38, 38, 1)"),
 			y=0.94,
 			x=0.5,
@@ -167,7 +197,7 @@ def crear_grafico_multifuerza(datos_jugador_hash, metricas_seleccionadas, metric
 			gridcolor="rgba(255,255,255,0.1)",
 			tickangle=0,
 			categoryorder="array",
-			categoryarray=nombres
+			categoryarray=nombres_bilaterales + nombres_totales
 		),
 		yaxis=dict(
 			title=dict(

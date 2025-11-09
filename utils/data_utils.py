@@ -94,19 +94,46 @@ def calcular_estadisticas_categoria(df_categoria, columnas_tabla):
 	"""Calcula medias y desviaciones estándar con cache"""
 	# Forzar a número para evitar errores silenciosos
 	for col in list(columnas_tabla.keys()) + list(columnas_tabla.values()):
-		df_categoria[col] = pd.to_numeric(df_categoria[col], errors="coerce")
+		if col in df_categoria.columns:
+			df_categoria[col] = pd.to_numeric(df_categoria[col], errors="coerce")
 
 	# Calcular medias del grupo
 	media_dict = {}
 	for col_der, col_izq in columnas_tabla.items():
-		media_dict[col_der] = round(df_categoria[col_der].mean(skipna=True), 1)
-		media_dict[col_izq] = round(df_categoria[col_izq].mean(skipna=True), 1)
+		if col_der in df_categoria.columns:
+			media_val = df_categoria[col_der].mean(skipna=True)
+			media_dict[col_der] = round(media_val, 1) if pd.notna(media_val) else 0.0
+		else:
+			media_dict[col_der] = 0.0
+			
+		if col_izq in df_categoria.columns:
+			media_val = df_categoria[col_izq].mean(skipna=True)
+			media_dict[col_izq] = round(media_val, 1) if pd.notna(media_val) else 0.0
+		else:
+			media_dict[col_izq] = 0.0
 
 	# Calcular desviaciones estándar del grupo
 	std_dict = {}
+	n_jugadores = len(df_categoria)
+	
 	for col_der, col_izq in columnas_tabla.items():
-		std_dict[col_der] = round(df_categoria[col_der].std(skipna=True), 1)
-		std_dict[col_izq] = round(df_categoria[col_izq].std(skipna=True), 1)
+		if col_der in df_categoria.columns:
+			if n_jugadores > 1:
+				std_val = df_categoria[col_der].std(skipna=True)
+				std_dict[col_der] = round(std_val, 1) if pd.notna(std_val) else 0.0
+			else:
+				std_dict[col_der] = 0.0  # Solo un jugador, no hay desviación
+		else:
+			std_dict[col_der] = 0.0
+			
+		if col_izq in df_categoria.columns:
+			if n_jugadores > 1:
+				std_val = df_categoria[col_izq].std(skipna=True)
+				std_dict[col_izq] = round(std_val, 1) if pd.notna(std_val) else 0.0
+			else:
+				std_dict[col_izq] = 0.0  # Solo un jugador, no hay desviación
+		else:
+			std_dict[col_izq] = 0.0
 	
 	return media_dict, std_dict
 
@@ -117,6 +144,112 @@ def preparar_datos_jugador(datos_jugador, columnas_tabla):
 	for col_der, col_izq in columnas_tabla.items():
 		jugador_dict[col_der] = round(datos_jugador.get(col_der, 0), 1)
 		jugador_dict[col_izq] = round(datos_jugador.get(col_izq, 0), 1)
+	return jugador_dict
+
+@st.cache_data(ttl=CACHE_TTL['estadisticas'])
+def calcular_estadisticas_completas_categoria(df_categoria, columnas_tabla, columnas_totales):
+	"""
+	Calcula TODAS las estadísticas de la categoría UNA SOLA VEZ (fijas)
+	Incluye métricas bilaterales y totales
+	"""
+	estadisticas = {
+		'media': {},
+		'std': {},
+		'n_jugadores': len(df_categoria)
+	}
+	
+	# Forzar a número para evitar errores silenciosos
+	for col in list(columnas_tabla.keys()) + list(columnas_tabla.values()) + columnas_totales:
+		if col in df_categoria.columns:
+			df_categoria[col] = pd.to_numeric(df_categoria[col], errors="coerce")
+
+	# Calcular estadísticas para métricas bilaterales
+	for col_der, col_izq in columnas_tabla.items():
+		# Derecha
+		if col_der in df_categoria.columns:
+			media_val = df_categoria[col_der].mean(skipna=True)
+			estadisticas['media'][col_der] = round(media_val, 1) if pd.notna(media_val) else 0.0
+			
+			if estadisticas['n_jugadores'] > 1:
+				std_val = df_categoria[col_der].std(skipna=True)
+				estadisticas['std'][col_der] = round(std_val, 1) if pd.notna(std_val) else 0.0
+			else:
+				estadisticas['std'][col_der] = 0.0
+		else:
+			estadisticas['media'][col_der] = 0.0
+			estadisticas['std'][col_der] = 0.0
+			
+		# Izquierda
+		if col_izq in df_categoria.columns:
+			media_val = df_categoria[col_izq].mean(skipna=True)
+			estadisticas['media'][col_izq] = round(media_val, 1) if pd.notna(media_val) else 0.0
+			
+			if estadisticas['n_jugadores'] > 1:
+				std_val = df_categoria[col_izq].std(skipna=True)
+				estadisticas['std'][col_izq] = round(std_val, 1) if pd.notna(std_val) else 0.0
+			else:
+				estadisticas['std'][col_izq] = 0.0
+		else:
+			estadisticas['media'][col_izq] = 0.0
+			estadisticas['std'][col_izq] = 0.0
+
+	# Calcular estadísticas para métricas totales
+	for col_total in columnas_totales:
+		if col_total in df_categoria.columns:
+			valores_totales = pd.to_numeric(df_categoria[col_total], errors="coerce").dropna()
+			if len(valores_totales) > 0:
+				estadisticas['media'][col_total] = round(valores_totales.mean(), 1)
+				if len(valores_totales) > 1:
+					estadisticas['std'][col_total] = round(valores_totales.std(), 1)
+				else:
+					estadisticas['std'][col_total] = 0.0
+			else:
+				estadisticas['media'][col_total] = 0.0
+				estadisticas['std'][col_total] = 0.0
+		else:
+			estadisticas['media'][col_total] = 0.0
+			estadisticas['std'][col_total] = 0.0
+	
+	return estadisticas
+
+@st.cache_data(ttl=CACHE_TTL['preparacion_datos'])
+def preparar_datos_jugador_completo(datos_jugador, columnas_tabla, columnas_totales):
+	"""
+	Prepara SOLO los datos del jugador seleccionado (dinámico)
+	Incluye métricas bilaterales y totales
+	"""
+	jugador_dict = {}
+	
+	# Procesar métricas bilaterales
+	for col_der, col_izq in columnas_tabla.items():
+		# Derecha
+		val_der = datos_jugador.get(col_der, 0)
+		try:
+			val_der = pd.to_numeric(val_der, errors='coerce')
+			val_der = 0.0 if pd.isna(val_der) else round(float(val_der), 1)
+		except (ValueError, TypeError):
+			val_der = 0.0
+		jugador_dict[col_der] = val_der
+		
+		# Izquierda
+		val_izq = datos_jugador.get(col_izq, 0)
+		try:
+			val_izq = pd.to_numeric(val_izq, errors='coerce')
+			val_izq = 0.0 if pd.isna(val_izq) else round(float(val_izq), 1)
+		except (ValueError, TypeError):
+			val_izq = 0.0
+		jugador_dict[col_izq] = val_izq
+	
+	# Procesar métricas totales
+	for col_total in columnas_totales:
+		val_total = datos_jugador.get(col_total, 0)
+		try:
+			val_total = pd.to_numeric(val_total, errors='coerce')
+			val_total = 0.0 if pd.isna(val_total) else round(float(val_total), 1)
+		except (ValueError, TypeError):
+			val_total = 0.0
+		jugador_dict[col_total] = val_total
+	
 	return jugador_dict
 
 @st.cache_data(ttl=CACHE_TTL['selecciones'])

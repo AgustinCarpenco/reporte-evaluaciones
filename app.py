@@ -26,12 +26,9 @@ def crear_header_seccion(seccion, jugador, categoria):
 	<div style='background: linear-gradient(135deg, rgba(220, 38, 38, 0.2), rgba(31, 41, 55, 0.2)); 
 				padding: 20px; border-radius: 15px; margin-bottom: 40px; margin-top: 30px;
 				border-left: 5px solid rgba(220, 38, 38, 1);'>
-		<h2 style='margin: 0; color: white; font-weight: bold;'>
-			Perfil Individual - {jugador}
+		<h2 style='margin: 0; color: white; font-family: "Source Sans Pro", sans-serif; font-weight: 600; font-size: 1.5rem; line-height: 1.2; padding: 0.75rem 0 1rem;'>
+			Perfil Individual<br><br>{jugador}
 		</h2>
-		<p style='margin: 5px 0 0 0; color: rgba(255,255,255,0.8); font-size: 16px;'>
-			Análisis de {seccion} - Categoría: {categoria}
-		</p>
 	</div>
 	""", unsafe_allow_html=True)
 

@@ -179,8 +179,8 @@ def crear_grafico_multifuerza(datos_jugador_hash, metricas_seleccionadas, metric
 		bargap=0.3,
 		bargroupgap=0.1,
 		title=dict(
-			text="⚽ Evaluación Física Integral – Atlético Colón ⚽<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Métricas de Fuerza – Bilaterales y Totales</span>",
-			font=dict(size=18, family="Roboto", weight="bold", color="rgba(220, 38, 38, 1)"),
+			text="Evaluación Física Integral – Atlético Colón<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Métricas de Fuerza – Bilaterales y Totales</span>",
+			font=dict(size=18, family="Source Sans Pro", weight=600, color="rgba(220, 38, 38, 1)"),
 			y=0.94,
 			x=0.5,
 			xanchor="center"
@@ -598,6 +598,31 @@ def crear_radar_zscore_simple(zscores_radar, jugador_nombre):
 	# Crear el radar chart estilo deportivo
 	fig = go.Figure()
 	
+	# Línea de referencia del grupo (media = 0)
+	valores_grupo = [0] * len(etiquetas)  # Media del grupo siempre es 0 en Z-Score
+	fig.add_trace(go.Scatterpolar(
+		r=valores_grupo,
+		theta=etiquetas,
+		fill='toself',
+		name='Media del Grupo',
+		line=dict(
+			color="rgba(59, 130, 246, 0.6)", 
+			width=3,
+			dash='dash'
+		),
+		fillcolor="rgba(59, 130, 246, 0.15)",
+		marker=dict(
+			size=8,
+			color="rgba(59, 130, 246, 0.6)",
+			line=dict(width=2, color="white"),
+			opacity=0.8,
+			symbol="circle"
+		),
+		hovertemplate='<b>%{theta}</b><br>' +
+					  'Media del Grupo (Z=0)<br>' +
+					  '<extra></extra>'
+	))
+	
 	# Área rellena principal (jugador)
 	fig.add_trace(go.Scatterpolar(
 		r=valores,
@@ -642,7 +667,7 @@ def crear_radar_zscore_simple(zscores_radar, jugador_nombre):
 				tickangle=0
 			),
 			angularaxis=dict(
-				tickfont=dict(size=16, color="white", family="Roboto", weight="bold"),
+				tickfont=dict(size=16, color="white", family="Source Sans Pro", weight=600),
 				linecolor="rgba(255,255,255,0.6)",
 				gridcolor="rgba(255,255,255,0.3)",
 				rotation=90,  # CUAD arriba
@@ -653,14 +678,14 @@ def crear_radar_zscore_simple(zscores_radar, jugador_nombre):
 		showlegend=False,
 		title=dict(
 			text=f"<b style='color: rgba(220, 38, 38, 1); font-size: 24px;'>{jugador_nombre}</b><br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Perfil Z-Score vs Grupo</span>",
-			font=dict(size=20, color="white", family="Roboto", weight="bold"),
+			font=dict(size=20, color="white", family="Source Sans Pro", weight=600),
 			x=0.5,
 			xanchor="center",
 			y=0.95
 		),
 		plot_bgcolor=COLORES['fondo_oscuro'],
 		paper_bgcolor=COLORES['fondo_oscuro'],
-		font=dict(color="white", family="Roboto"),
+		font=dict(color="white", family="Source Sans Pro"),
 		height=600,
 		margin=dict(t=100, b=80, l=80, r=80)  # Márgenes equilibrados sin leyenda
 	)

@@ -58,7 +58,7 @@ def analizar_fuerza(df, datos_jugador, jugador, categoria):
 		<div style="animation: fadeInUp 0.8s ease-out;">
 		""", unsafe_allow_html=True)
 		
-		st.plotly_chart(fig_multifuerza, width='stretch', config=PLOTLY_CONFIG)
+		st.plotly_chart(fig_multifuerza, use_container_width=True, config=PLOTLY_CONFIG)
 		
 		st.markdown("</div>", unsafe_allow_html=True)
 		
@@ -69,14 +69,14 @@ def analizar_fuerza(df, datos_jugador, jugador, categoria):
 		st.markdown(f"""
 		<div style='background: linear-gradient(90deg, rgba(220, 38, 38, 0.8), rgba(17, 24, 39, 0.8));
 					border-left: 4px solid rgba(220, 38, 38, 1); padding: 15px; border-radius: 8px;'>
-			<h4 style='margin: 0; color: white; font-size: 18px; font-weight: bold;'>
-				Perfil Z-Score - Comparación vs Grupo
+			<h4 style='margin: 0; color: white; font-family: "Source Sans Pro", sans-serif; font-weight: 600; font-size: 1.5rem; line-height: 1.2; padding: 0.75rem 0 1rem;'>
+				Comparación vs Grupo
 			</h4>
-			<p style='margin: 5px 0 0 0; color: rgba(255,255,255,0.8); font-size: 14px;'>
-				Radar simplificado con 5 métricas principales de fuerza
-			</p>
 		</div>
 		""", unsafe_allow_html=True)
+		
+		# Espaciado para mejorar el estilo visual
+		st.markdown("<br>", unsafe_allow_html=True)
 		
 		# Calcular estadísticas poblacionales para radar simplificado
 		with st.spinner("Calculando estadísticas para radar..."):
@@ -97,12 +97,10 @@ def analizar_fuerza(df, datos_jugador, jugador, categoria):
 				'width': 800
 			})
 			
-			st.plotly_chart(fig_radar_simple, width='stretch', config=radar_config)
+			st.plotly_chart(fig_radar_simple, use_container_width=True, config=radar_config)
 			
 			# Información resumida debajo del radar
 			if zscores_radar:
-				st.markdown("### Resumen de Rendimiento")
-				
 				# Crear métricas en columnas
 				cols = st.columns(len(zscores_radar))
 				
@@ -174,14 +172,8 @@ def analizar_fuerza(df, datos_jugador, jugador, categoria):
 		df_categoria_base = procesar_datos_categoria(df, categoria_base)
 		estadisticas_grupales = calcular_estadisticas_completas_categoria(df_categoria_base, columnas_tabla, columnas_totales)
 		
-		# Mensaje informativo sobre estadísticas grupales
+		# Obtener número de jugadores para los nombres de las filas
 		n_jugadores_categoria = estadisticas_grupales['n_jugadores']
-		if categoria != categoria_base:
-			st.info(f"ℹ️ Las estadísticas grupales se calculan usando '{categoria_base}' (n={n_jugadores_categoria}) como referencia poblacional.")
-		elif n_jugadores_categoria == 1:
-			st.info(f"ℹ️ Solo hay 1 jugador en la categoría '{categoria_base}'. Las estadísticas grupales (Media y Desv. Est.) mostrarán el valor individual.")
-		elif n_jugadores_categoria < 3:
-			st.warning(f"⚠️ Solo hay {n_jugadores_categoria} jugadores en la categoría '{categoria_base}'. Se recomienda tener al menos 3 jugadores para estadísticas confiables.")
 		
 		# PREPARAR SOLO LOS DATOS DEL JUGADOR SELECCIONADO (DINÁMICO)
 		jugador_dict = preparar_datos_jugador_completo(datos_jugador_dict, columnas_tabla, columnas_totales)
@@ -210,12 +202,9 @@ def analizar_fuerza(df, datos_jugador, jugador, categoria):
 		else:
 			st.error("❌ No se encontraron columnas válidas para la tabla")
 			return
-		# Nombres más descriptivos para las filas usando la categoría base para estadísticas
+		# Nombres simplificados para las filas
 		n_jugadores = estadisticas_grupales['n_jugadores']
-		if n_jugadores == 1:
-			df_comparativo.index = [f"{jugador}", f"Media {categoria_base} (n=1)", f"Desv. Est. {categoria_base} (n=1)"]
-		else:
-			df_comparativo.index = [f"{jugador}", f"Media {categoria_base} (n={n_jugadores})", f"Desv. Est. {categoria_base} (n={n_jugadores})"]
+		df_comparativo.index = [f"{jugador}", "Media", "Desviación Estándar"]
 		
 		# Transponer tabla para mejor visualización y exportación PDF
 		df_transpuesto = df_comparativo.T
@@ -234,7 +223,7 @@ def analizar_fuerza(df, datos_jugador, jugador, categoria):
 				{'selector': 'th.row_heading', 'props': 'background-color: rgba(31, 41, 55, 0.8); color: white; font-weight: bold; text-align: left;'},
 				{'selector': 'td', 'props': 'text-align: center; padding: 8px;'}
 			]),
-			width='stretch'
+			use_container_width=True
 		)
 		
 	else:

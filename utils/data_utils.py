@@ -571,3 +571,88 @@ def generar_zscores_radar_simple(datos_jugador, estadisticas_poblacion, metricas
 				}
 	
 	return zscores_radar
+
+@st.cache_data(ttl=CACHE_TTL['estadisticas'])
+def calcular_estadisticas_distribucion_grupal(df_categoria, metricas_radar_simple):
+	"""
+	Calcula estadísticas completas para distribución grupal (media, min, max)
+	
+	Args:
+		df_categoria: DataFrame filtrado por categoría
+		metricas_radar_simple: Dict con métricas simplificadas
+		
+	Returns:
+		Dict con estadísticas completas para distribución grupal
+	"""
+	estadisticas = {}
+	
+	# Filtrar solo jugadores
+	df_limpio = df_categoria[
+		(~df_categoria['Deportista'].str.contains('RIESGO|MEDIA|TOTAL|SD', case=False, na=False)) &
+		(df_categoria['Deportista'].notna())
+	].copy()
+	
+	# Calcular estadísticas para métricas directas (totales)
+	metricas_directas = {
+		'F PICO (IMTP) (N)': 'IMTP Total',
+		'FP (CMJ) (N)': 'CMJ FP Total',
+		'FF (CMJ) (N)': 'CMJ FF Total'
+	}
+	
+	for metrica_col, metrica_label in metricas_directas.items():
+		if metrica_col in df_limpio.columns:
+			valores = pd.to_numeric(df_limpio[metrica_col], errors='coerce').dropna()
+			if len(valores) >= 3:
+				estadisticas[metrica_col] = {
+					'media': round(valores.mean(), 2),
+					'std': round(valores.std(ddof=1), 2),
+					'minimo': round(valores.min(), 2),
+					'maximo': round(valores.max(), 2),
+					'n': len(valores),
+					'label': metrica_label
+				}
+	
+	# Calcular estadísticas para métricas bilaterales (promedios)
+	# CUAD promedio
+	cuad_der_vals = pd.to_numeric(df_limpio.get('CUAD DER (N)', []), errors='coerce').dropna()
+	cuad_izq_vals = pd.to_numeric(df_limpio.get('CUAD IZQ (N)', []), errors='coerce').dropna()
+	if len(cuad_der_vals) >= 3 and len(cuad_izq_vals) >= 3:
+		cuad_promedios = (cuad_der_vals + cuad_izq_vals) / 2
+		estadisticas['CUAD_PROMEDIO'] = {
+			'media': round(cuad_promedios.mean(), 2),
+			'std': round(cuad_promedios.std(ddof=1), 2),
+			'minimo': round(cuad_promedios.min(), 2),
+			'maximo': round(cuad_promedios.max(), 2),
+			'n': len(cuad_promedios),
+			'label': 'CUAD'
+		}
+	
+	# WOLLIN promedio
+	wollin_der_vals = pd.to_numeric(df_limpio.get('WOLLIN DER', []), errors='coerce').dropna()
+	wollin_izq_vals = pd.to_numeric(df_limpio.get('WOLLIN IZQ', []), errors='coerce').dropna()
+	if len(wollin_der_vals) >= 3 and len(wollin_izq_vals) >= 3:
+		wollin_promedios = (wollin_der_vals + wollin_izq_vals) / 2
+		estadisticas['WOLLIN_PROMEDIO'] = {
+			'media': round(wollin_promedios.mean(), 2),
+			'std': round(wollin_promedios.std(ddof=1), 2),
+			'minimo': round(wollin_promedios.min(), 2),
+			'maximo': round(wollin_promedios.max(), 2),
+			'n': len(wollin_promedios),
+			'label': 'ISQ Wollin'
+		}
+	
+	# TRIPLE SALTO promedio
+	triple_der_vals = pd.to_numeric(df_limpio.get('TRIPLE SALTO DER', []), errors='coerce').dropna()
+	triple_izq_vals = pd.to_numeric(df_limpio.get('TRIPLE SALTO IZQ', []), errors='coerce').dropna()
+	if len(triple_der_vals) >= 3 and len(triple_izq_vals) >= 3:
+		triple_promedios = (triple_der_vals + triple_izq_vals) / 2
+		estadisticas['TRIPLE_SALTO_PROMEDIO'] = {
+			'media': round(triple_promedios.mean(), 2),
+			'std': round(triple_promedios.std(ddof=1), 2),
+			'minimo': round(triple_promedios.min(), 2),
+			'maximo': round(triple_promedios.max(), 2),
+			'n': len(triple_promedios),
+			'label': 'TRIPLE SALTO'
+		}
+	
+	return estadisticas

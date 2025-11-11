@@ -691,3 +691,521 @@ def crear_radar_zscore_simple(zscores_radar, jugador_nombre):
 	)
 	
 	return fig
+
+@st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando gráfico grupal de fuerza...")
+def crear_grafico_multifuerza_grupal(estadisticas_grupales, metricas_seleccionadas, categoria):
+	"""Crea gráfico de multifuerza GRUPAL con medias del grupo"""
+	
+	# Separar métricas bilaterales y totales
+	metricas_bilaterales = []
+	metricas_totales = []
+	barras_der, barras_izq, nombres_bilaterales = [], [], []
+	valores_totales, nombres_totales = [], []
+	lsi_labels = {}
+
+	for metrica in metricas_seleccionadas:
+		if metrica in estadisticas_grupales:
+			# Métricas totales (no bilaterales)
+			if metrica in ["IMTP Total", "CMJ FP Total", "CMJ FF Total"]:
+				val_total = estadisticas_grupales[metrica]['media_total']
+				valores_totales.append(val_total)
+				nombres_totales.append(metrica)
+				metricas_totales.append(metrica)
+				
+			# Métricas bilaterales tradicionales
+			else:
+				val_der = estadisticas_grupales[metrica]['media_der']
+				val_izq = estadisticas_grupales[metrica]['media_izq']
+				barras_der.append(val_der)
+				barras_izq.append(val_izq)
+				nombres_bilaterales.append(metrica)
+				metricas_bilaterales.append(metrica)
+				
+				# Calcular LSI grupal para métricas bilaterales
+				if val_der > 0 and val_izq > 0:
+					lsi_val = (min(val_der, val_izq) / max(val_der, val_izq)) * 100
+					lsi_labels[metrica] = lsi_val
+
+	fig = go.Figure()
+
+	# Agregar trazas para métricas bilaterales (si existen)
+	if nombres_bilaterales:
+		fig.add_trace(go.Bar(
+			x=nombres_bilaterales,
+			y=barras_der,
+			name="🔴 Derecho (Grupo)",
+			marker=dict(
+				color="rgba(220, 38, 38, 0.9)",  # Rojo igual al individual
+				pattern=dict(
+					shape="",
+					bgcolor="rgba(220, 38, 38, 0.3)",
+					fgcolor="rgba(220, 38, 38, 1)"
+				),
+				opacity=0.9
+			),
+			text=[f"{v:.0f} N" for v in barras_der],
+			textposition="outside",
+			textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
+			hovertemplate='<b>🔴 Derecho (Grupo)</b><br>%{x}: %{y:.0f} N<br><i>Media grupal</i><extra></extra>',
+			offsetgroup=1,
+			hoverlabel=dict(
+				bgcolor="rgba(220, 38, 38, 0.9)",
+				bordercolor="rgba(220, 38, 38, 1)",
+				font=dict(color="white", family="Roboto")
+			)
+		))
+
+		fig.add_trace(go.Bar(
+			x=nombres_bilaterales,
+			y=barras_izq,
+			name="⚫ Izquierdo (Grupo)",
+			marker=dict(
+				color="rgba(31, 41, 55, 0.9)",  # Negro igual al individual
+				pattern=dict(
+					shape="",
+					bgcolor="rgba(31, 41, 55, 0.3)",
+					fgcolor="rgba(31, 41, 55, 1)"
+				),
+				opacity=0.9
+			),
+			text=[f"{v:.0f} N" for v in barras_izq],
+			textposition="outside",
+			textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
+			hovertemplate='<b>⚫ Izquierdo (Grupo)</b><br>%{x}: %{y:.0f} N<br><i>Media grupal</i><extra></extra>',
+			offsetgroup=2,
+			hoverlabel=dict(
+				bgcolor="rgba(31, 41, 55, 0.9)",
+				bordercolor="rgba(31, 41, 55, 1)",
+				font=dict(color="white", family="Roboto")
+			)
+		))
+
+	# Agregar traza para métricas totales (si existen) - UNA SOLA BARRA CENTRADA
+	if nombres_totales:
+		fig.add_trace(go.Bar(
+			x=nombres_totales,
+			y=valores_totales,
+			name="🟡 Total (Grupo)",
+			marker=dict(
+				color="rgba(255, 193, 7, 0.9)",  # Color dorado para totales
+				pattern=dict(
+					shape="",
+					bgcolor="rgba(255, 193, 7, 0.3)",
+					fgcolor="rgba(255, 193, 7, 1)"
+				),
+				opacity=0.9
+			),
+			text=[f"{v:.0f} N" for v in valores_totales],
+			textposition="outside",
+			textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
+			hovertemplate='<b>🟡 Total (Grupo)</b><br>%{x}: %{y:.0f} N<br><i>Media grupal bilateral</i><extra></extra>',
+			offsetgroup=3,
+			hoverlabel=dict(
+				bgcolor="rgba(255, 193, 7, 0.9)",
+				bordercolor="rgba(255, 193, 7, 1)",
+				font=dict(color="white", family="Roboto")
+			)
+		))
+
+	# LSI annotations - SOLO PARA MÉTRICAS BILATERALES GRUPALES
+	for i, name in enumerate(nombres_bilaterales):
+		lsi_val = lsi_labels.get(name)
+		
+		if lsi_val and lsi_val > 0:
+			# Determinar color según rango LSI
+			if 90 <= lsi_val <= 110:  # Zona óptima
+				lsi_color = COLORES['verde_optimo']
+				border_color = "rgba(50, 205, 50, 1)"
+			elif 80 <= lsi_val < 90 or 110 < lsi_val <= 120:  # Zona de alerta
+				lsi_color = COLORES['naranja_alerta']
+				border_color = "rgba(255, 165, 0, 1)"
+			else:  # Zona de riesgo
+				lsi_color = COLORES['rojo_riesgo']
+				border_color = "rgba(255, 69, 0, 1)"
+			
+			fig.add_annotation(
+				text=f"<b>LSI Grupal: {lsi_val:.1f}%</b>",
+				x=name,
+				y=max(barras_der[i], barras_izq[i]) * 1.55,
+				showarrow=False,
+				font=dict(size=11, color="white", family="Roboto", weight="bold"),
+				xanchor="center",
+				align="center",
+				bgcolor=lsi_color,
+				bordercolor=border_color,
+				borderwidth=2,
+				borderpad=8,
+				opacity=0.95
+			)
+	
+	# Agregar logo del club como marca de agua
+	try:
+		escudo_base64 = get_base64_image(ESCUDO_PATH)
+		fig.add_layout_image(
+			dict(
+				source=f"data:image/png;base64,{escudo_base64}",
+				xref="paper", yref="paper",
+				x=0.95, y=0.05,
+				sizex=0.15, sizey=0.15,
+				xanchor="right", yanchor="bottom",
+				opacity=0.1,
+				layer="below"
+			)
+		)
+	except:
+		pass
+
+	fig.update_layout(
+		barmode="group",
+		bargap=0.3,
+		bargroupgap=0.1,
+		title=dict(
+			text=f"Perfil Grupal – {categoria}<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Métricas de Fuerza – Medias Grupales</span>",
+			font=dict(size=18, family="Source Sans Pro", weight=600, color="rgba(220, 38, 38, 1)"),
+			y=0.94,
+			x=0.5,
+			xanchor="center"
+		),
+		xaxis=dict(
+			title=dict(
+				text="Métrica", 
+				font=dict(size=14, family="Roboto"),
+				standoff=20
+			),
+			tickfont=dict(size=12, family="Roboto"),
+			showgrid=True,
+			gridwidth=1,
+			gridcolor="rgba(255,255,255,0.1)",
+			tickangle=0,
+			categoryorder="array",
+			categoryarray=nombres_bilaterales + nombres_totales
+		),
+		yaxis=dict(
+			title=dict(
+				text="Fuerza (N)", 
+				font=dict(size=14, family="Roboto"),
+				standoff=15
+			),
+			tickfont=dict(size=12, family="Roboto"),
+			showgrid=True,
+			gridwidth=1,
+			gridcolor="rgba(255,255,255,0.1)",
+			zeroline=True,
+			zerolinewidth=2,
+			zerolinecolor="rgba(255,255,255,0.3)"
+		),
+		legend=dict(
+			orientation="h",
+			yanchor="bottom",
+			y=1.02,
+			xanchor="center",
+			x=0.5,
+			font=dict(size=12, family="Roboto"),
+			bgcolor="rgba(220, 38, 38, 0.2)",
+			bordercolor="rgba(220, 38, 38, 0.5)",
+			borderwidth=2
+		),
+		plot_bgcolor=COLORES['fondo_oscuro'],
+		paper_bgcolor=COLORES['fondo_oscuro'],
+		font=dict(color="white", family="Roboto"),
+		height=650,
+		margin=dict(t=140, b=60, l=60, r=60),
+		showlegend=True,
+		transition=dict(
+			duration=800,
+			easing="cubic-in-out"
+		),
+		hovermode="x unified",
+		hoverdistance=100,
+		spikedistance=1000
+	)
+
+	return fig
+
+@st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando radar grupal...")
+def crear_radar_zscore_grupal(datos_grupo_radar, nombre_grupo):
+	"""
+	Crea un radar chart para análisis GRUPAL mostrando solo las medias del grupo
+	
+	Args:
+		datos_grupo_radar: Dict con datos grupales (Z-Score siempre 0)
+		nombre_grupo: Nombre del grupo
+		
+	Returns:
+		Figura de Plotly con radar chart grupal
+	"""
+	if not datos_grupo_radar or len(datos_grupo_radar) == 0:
+		# Crear gráfico vacío si no hay datos
+		fig = go.Figure()
+		fig.add_annotation(
+			text="<b>Sin datos para radar grupal</b><br>Verificar métricas del grupo",
+			x=0.5, y=0.5,
+			xref="paper", yref="paper",
+			showarrow=False,
+			font=dict(size=16, color="white", family="Roboto"),
+			align="center"
+		)
+		fig.update_layout(
+			plot_bgcolor=COLORES['fondo_oscuro'],
+			paper_bgcolor=COLORES['fondo_oscuro'],
+			height=500
+		)
+		return fig
+	
+	# Extraer datos para el radar grupal
+	valores = []
+	etiquetas = []
+	valores_originales = []
+	
+	# Orden específico para mejor visualización
+	orden_metricas = ['CUAD', 'ISQ Wollin', 'IMTP', 'CMJ Propulsiva', 'CMJ Frenado']
+	
+	for metrica in orden_metricas:
+		if metrica in datos_grupo_radar:
+			data = datos_grupo_radar[metrica]
+			valores.append(data['zscore'])  # Siempre 0 para grupo
+			etiquetas.append(metrica)
+			valores_originales.append(data['valor_original'])
+	
+	if not valores:
+		# Sin valores válidos
+		fig = go.Figure()
+		fig.add_annotation(
+			text="<b>Sin datos válidos para radar grupal</b><br>Verificar datos del grupo",
+			x=0.5, y=0.5,
+			xref="paper", yref="paper",
+			showarrow=False,
+			font=dict(size=16, color="white", family="Roboto"),
+			align="center"
+		)
+		fig.update_layout(
+			plot_bgcolor=COLORES['fondo_oscuro'],
+			paper_bgcolor=COLORES['fondo_oscuro'],
+			height=500
+		)
+		return fig
+	
+	# Crear el radar chart estilo grupal
+	fig = go.Figure()
+	
+	# Área rellena principal (grupo - siempre en el centro)
+	fig.add_trace(go.Scatterpolar(
+		r=valores,  # Todos los valores son 0 (centro)
+		theta=etiquetas,
+		fill='toself',
+		name=nombre_grupo,
+		line=dict(
+			color="rgba(220, 38, 38, 1)", 
+			width=6
+		),
+		fillcolor="rgba(220, 38, 38, 0.4)",
+		marker=dict(
+			size=20,
+			color="rgba(220, 38, 38, 1)",
+			line=dict(width=4, color="white"),
+			opacity=1.0,
+			symbol="circle"
+		),
+		hovertemplate='<b>%{theta}</b><br>' +
+					  'Media Grupal: %{customdata:.1f}<br>' +
+					  '<i>Línea base del grupo</i><br>' +
+					  '<extra></extra>',
+		customdata=valores_originales
+	))
+	
+	# Configuración del layout estilo grupal
+	fig.update_layout(
+		polar=dict(
+			radialaxis=dict(
+				visible=True,
+				range=[-2.5, 2.5],
+				tickvals=[-2, -1, 0, 1, 2],
+				ticktext=['-2', '-1', '0', '+1', '+2'],
+				tickfont=dict(size=14, color="rgba(255,255,255,0.9)", family="Roboto"),
+				gridcolor="rgba(255,255,255,0.3)",
+				linecolor="rgba(255,255,255,0.5)",
+				showticklabels=True,
+				tickangle=0
+			),
+			angularaxis=dict(
+				tickfont=dict(size=16, color="white", family="Source Sans Pro", weight=600),
+				linecolor="rgba(255,255,255,0.6)",
+				gridcolor="rgba(255,255,255,0.3)",
+				rotation=90,  # CUAD arriba
+				direction="clockwise"
+			),
+			bgcolor=COLORES['fondo_oscuro']
+		),
+		showlegend=False,
+		title=dict(
+			text=f"<b style='color: rgba(220, 38, 38, 1); font-size: 24px;'>{nombre_grupo}</b><br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Perfil Grupal - Medias de Referencia</span>",
+			font=dict(size=20, color="white", family="Source Sans Pro", weight=600),
+			x=0.5,
+			xanchor="center",
+			y=0.95
+		),
+		plot_bgcolor=COLORES['fondo_oscuro'],
+		paper_bgcolor=COLORES['fondo_oscuro'],
+		font=dict(color="white", family="Source Sans Pro"),
+		height=600,
+		margin=dict(t=100, b=80, l=80, r=80)
+	)
+	
+	return fig
+
+@st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando gráfico de distribución grupal...")
+def crear_grafico_distribucion_grupal(estadisticas_radar_grupal, categoria_display):
+	"""
+	Crea un gráfico de barras con rangos para análisis grupal
+	Muestra media, mínimo y máximo de cada métrica del grupo
+	
+	Args:
+		estadisticas_radar_grupal: Dict con estadísticas del grupo
+		categoria_display: Nombre amigable de la categoría
+		
+	Returns:
+		Figura de Plotly con gráfico de distribución grupal
+	"""
+	if not estadisticas_radar_grupal or len(estadisticas_radar_grupal) == 0:
+		# Crear gráfico vacío si no hay datos
+		fig = go.Figure()
+		fig.add_annotation(
+			text="<b>Sin datos para distribución grupal</b><br>Verificar métricas del grupo",
+			x=0.5, y=0.5,
+			xref="paper", yref="paper",
+			showarrow=False,
+			font=dict(size=16, color="white", family="Roboto"),
+			align="center"
+		)
+		fig.update_layout(
+			plot_bgcolor=COLORES['fondo_oscuro'],
+			paper_bgcolor=COLORES['fondo_oscuro'],
+			height=500
+		)
+		return fig
+	
+	# Extraer datos para el gráfico
+	metricas = []
+	medias = []
+	minimos = []
+	maximos = []
+	
+	# Orden específico para mejor visualización - TODAS las métricas de fuerza
+	orden_metricas = ['CUAD', 'ISQ Wollin', 'IMTP Total', 'CMJ FP Total', 'CMJ FF Total', 'TRIPLE SALTO']
+	
+	for metrica in orden_metricas:
+		for metrica_key, stats in estadisticas_radar_grupal.items():
+			if stats['label'] == metrica:
+				metricas.append(metrica)
+				medias.append(stats['media'])
+				minimos.append(stats['minimo'])
+				maximos.append(stats['maximo'])
+				break
+	
+	if not metricas:
+		# Sin métricas válidas
+		fig = go.Figure()
+		fig.add_annotation(
+			text="<b>Sin métricas válidas</b><br>Verificar datos del grupo",
+			x=0.5, y=0.5,
+			xref="paper", yref="paper",
+			showarrow=False,
+			font=dict(size=16, color="white", family="Roboto"),
+			align="center"
+		)
+		fig.update_layout(
+			plot_bgcolor=COLORES['fondo_oscuro'],
+			paper_bgcolor=COLORES['fondo_oscuro'],
+			height=500
+		)
+		return fig
+	
+	# Crear el gráfico de barras con rangos
+	fig = go.Figure()
+	
+	# Barras principales (medias del grupo)
+	fig.add_trace(go.Bar(
+		x=metricas,
+		y=medias,
+		name="Media del Grupo",
+		marker=dict(
+			color="rgba(220, 38, 38, 0.8)",
+			line=dict(color="rgba(220, 38, 38, 1)", width=2)
+		),
+		text=[f"{v:.0f}" for v in medias],
+		textposition="outside",
+		textfont=dict(size=14, color="white", family="Roboto", weight="bold"),
+		hovertemplate='<b>%{x}</b><br>' +
+					  'Media: %{y:.1f}<br>' +
+					  '<extra></extra>',
+		hoverlabel=dict(
+			bgcolor="rgba(220, 38, 38, 0.9)",
+			bordercolor="rgba(220, 38, 38, 1)",
+			font=dict(color="white", family="Roboto")
+		)
+	))
+	
+	# Sin líneas de referencia - cada métrica tiene su propia escala
+	
+	# Agregar logo del club como marca de agua
+	try:
+		escudo_base64 = get_base64_image(ESCUDO_PATH)
+		fig.add_layout_image(
+			dict(
+				source=f"data:image/png;base64,{escudo_base64}",
+				xref="paper", yref="paper",
+				x=0.95, y=0.05,
+				sizex=0.15, sizey=0.15,
+				xanchor="right", yanchor="bottom",
+				opacity=0.1,
+				layer="below"
+			)
+		)
+	except:
+		pass
+	
+	# Configuración del layout
+	fig.update_layout(
+		title=dict(
+			text=f"<b style='color: rgba(220, 38, 38, 1); font-size: 24px;'>{categoria_display}</b><br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Medias del Grupo</span>",
+			font=dict(size=20, color="white", family="Source Sans Pro", weight=600),
+			x=0.5,
+			xanchor="center",
+			y=0.95
+		),
+		xaxis=dict(
+			title=dict(
+				text="Métrica", 
+				font=dict(size=14, family="Roboto"),
+				standoff=20
+			),
+			tickfont=dict(size=12, family="Roboto"),
+			showgrid=True,
+			gridwidth=1,
+			gridcolor="rgba(255,255,255,0.1)",
+			tickangle=0
+		),
+		yaxis=dict(
+			title=dict(
+				text="Valores", 
+				font=dict(size=14, family="Roboto"),
+				standoff=15
+			),
+			tickfont=dict(size=12, family="Roboto"),
+			showgrid=True,
+			gridwidth=1,
+			gridcolor="rgba(255,255,255,0.1)",
+			zeroline=True,
+			zerolinewidth=2,
+			zerolinecolor="rgba(255,255,255,0.3)"
+		),
+		plot_bgcolor=COLORES['fondo_oscuro'],
+		paper_bgcolor=COLORES['fondo_oscuro'],
+		font=dict(color="white", family="Roboto"),
+		height=600,
+		margin=dict(t=100, b=80, l=80, r=80),
+		showlegend=False,  # Simplificado - sin leyenda
+		hovermode="x unified"
+	)
+	
+	return fig

@@ -50,14 +50,32 @@ def crear_sidebar(df):
 		# Obtener el nombre original para filtrar los datos
 		categoria = mapeo_nombres[categoria_seleccionada]
 		
+		# Opciones de análisis (mover antes del selector de deportista)
+		vista = st.radio(
+			"Tipo de Análisis", 
+			["Perfil del Jugador", "Perfil del Grupo", "Comparación Jugador vs Grupo"]
+		)
+		
 		jugadores_filtrados = obtener_jugadores_categoria(df, categoria)
 		
-		jugador = st.selectbox(
-			"Deportista", 
-			jugadores_filtrados,
-			key="jugador_selector",
-			help="Selecciona el deportista para análisis individual"
-		)
+		# Selector de deportista - BLOQUEADO para análisis grupal
+		if vista == "Perfil del Grupo":
+			st.selectbox(
+				"Deportista", 
+				["--- Análisis Grupal ---"],
+				key="jugador_selector_bloqueado",
+				disabled=True,
+				help="El selector está bloqueado para análisis grupal"
+			)
+			# Para análisis grupal, usar el primer jugador como placeholder (no se usa)
+			jugador = jugadores_filtrados[0] if len(jugadores_filtrados) > 0 else "Sin jugadores"
+		else:
+			jugador = st.selectbox(
+				"Deportista", 
+				jugadores_filtrados,
+				key="jugador_selector",
+				help="Selecciona el deportista para análisis individual"
+			)
 		
 		# Limpiar cache si hay cambio en la selección
 		limpiar_cache_si_cambio(jugador, categoria)
@@ -65,12 +83,6 @@ def crear_sidebar(df):
 		# Actualizar session state
 		st.session_state.ultimo_jugador = jugador
 		st.session_state.ultima_categoria = categoria
-
-		# Opciones de análisis
-		vista = st.radio(
-			"Tipo de Análisis", 
-			["Perfil del Jugador", "Perfil del Grupo", "Comparación Jugador vs Grupo"]
-		)
 		
 		seccion = st.radio(
 			"Evaluación", 

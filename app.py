@@ -10,7 +10,7 @@ from config.settings import DATA_PATH
 from utils.ui_utils import inicializar_session_state, aplicar_estilos_css, crear_header_principal, crear_footer, configurar_tema_oscuro
 from utils.data_utils import cargar_datos_optimizado
 from components.sidebar import crear_sidebar
-from modules.fuerza_analysis import analizar_fuerza
+from modules.fuerza_analysis import analizar_fuerza, analizar_fuerza_grupal
 
 # ========= CONFIGURACIÓN DE PÁGINA ==========
 st.set_page_config(
@@ -72,24 +72,20 @@ def main():
 			st.info("El análisis de funcionalidad estará disponible próximamente.")
 	
 	elif vista == "Perfil del Grupo":
-		# Header de sección grupal
+		# Header de sección grupal - EXACTAMENTE IGUAL AL INDIVIDUAL
 		st.markdown(f"""
-		<div style='background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(16, 185, 129, 0.2)); 
-					padding: 20px; border-radius: 15px; margin-bottom: 25px; 
-					border-left: 5px solid rgba(59, 130, 246, 1);'>
-			<h2 style='margin: 0; color: white; font-weight: bold;'>
-				👥 Perfil del Grupo - {categoria}
+		<div style='background: linear-gradient(135deg, rgba(220, 38, 38, 0.2), rgba(31, 41, 55, 0.2)); 
+					padding: 20px; border-radius: 15px; margin-bottom: 40px; margin-top: 30px;
+					border-left: 5px solid rgba(220, 38, 38, 1);'>
+			<h2 style='margin: 0; color: white; font-family: "Source Sans Pro", sans-serif; font-weight: 600; font-size: 1.5rem; line-height: 1.2; padding: 0.75rem 0 1rem;'>
+				Perfil del Grupo
 			</h2>
-			<p style='margin: 5px 0 0 0; color: rgba(255,255,255,0.8); font-size: 16px;'>
-				Análisis agregado de {seccion} - Valores promedio y estadísticas grupales
-			</p>
 		</div>
 		""", unsafe_allow_html=True)
 		
 		# Análisis por sección
 		if seccion == "Fuerza":
-			st.markdown("### 🔧 Módulo en Desarrollo")
-			st.info("El análisis grupal de fuerza estará disponible próximamente.")
+			analizar_fuerza_grupal(df, categoria)
 			
 		elif seccion == "Movilidad":
 			st.markdown("### 🔧 Módulo en Desarrollo")

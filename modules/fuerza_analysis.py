@@ -4,7 +4,7 @@ Módulo de análisis de fuerza
 
 import streamlit as st
 import pandas as pd
-from visualizations.charts import crear_grafico_multifuerza, crear_radar_zscore, crear_radar_zscore_automatico, crear_radar_zscore_simple, crear_grafico_multifuerza_grupal, crear_radar_zscore_grupal, crear_grafico_distribucion_grupal
+from visualizations.charts import crear_grafico_multifuerza, crear_radar_zscore, crear_radar_zscore_automatico, crear_radar_zscore_simple, crear_grafico_multifuerza_grupal, crear_radar_zscore_grupal, crear_grafico_distribucion_grupal, crear_grafico_multifuerza_comparativo, crear_radar_zscore_comparativo
 from utils.data_utils import (
 	procesar_datos_categoria, calcular_estadisticas_categoria, preparar_datos_jugador,
 	calcular_zscores_automaticos, generar_zscores_jugador, calcular_zscores_radar_simple, generar_zscores_radar_simple,
@@ -463,3 +463,209 @@ def analizar_fuerza_grupal(df, categoria):
 		
 	else:
 		st.info("Selecciona al menos una métrica para visualizar el análisis grupal.")
+
+def analizar_fuerza_comparativo(df, datos_jugador, jugador, categoria):
+	"""Realiza el análisis COMPARATIVO de fuerza (Jugador vs Grupo)"""
+	
+	# === Selección de métricas de fuerza - EXPANDIDAS ===
+	metricas_disponibles = ["CUAD", "WOLLIN", "IMTP", "CMJ Propulsiva", "CMJ Frenado", "TRIPLE SALTO", "IMTP Total", "CMJ FP Total", "CMJ FF Total"]
+	metricas_display = ["CUAD", "WOLLIN", "IMTP", "CMJ Propulsiva", "CMJ Frenado", "TRIPLE SALTO", "IMTP Total", "CMJ FP Total", "CMJ FF Total"]
+	metricas_columnas = {
+		"CUAD": ("CUAD DER (N)", "CUAD IZQ (N)"),
+		"WOLLIN": ("WOLLIN DER", "WOLLIN IZQ"),
+		"IMTP": ("F PICO DER (IMTP) (N)", "F PICO IZQ (IMTP) (N)"),
+		"CMJ Propulsiva": ("FP DER (CMJ) (N)", "FP IZQ (CMJ) (N)"),
+		"CMJ Frenado": ("FF DER (CMJ) (N)", "FF IZQ (CMJ) (N)"),
+		"TRIPLE SALTO": ("TRIPLE SALTO DER", "TRIPLE SALTO IZQ"),
+		"IMTP Total": ("F PICO (IMTP) (N)", "F PICO (IMTP) (N)"),  # Valor total bilateral
+		"CMJ FP Total": ("FP (CMJ) (N)", "FP (CMJ) (N)"),  # Valor total bilateral
+		"CMJ FF Total": ("FF (CMJ) (N)", "FF (CMJ) (N)")   # Valor total bilateral
+	}
+
+	metricas_seleccionadas_display = st.multiselect(
+		"Selección de Métricas - Selecciona las evaluaciones para la comparación:",
+		metricas_disponibles,
+		default=["CUAD", "WOLLIN", "IMTP", "CMJ Propulsiva"]
+	)
+	
+	# Convertir de display a nombres reales
+	metricas_seleccionadas = []
+	for metrica_display in metricas_seleccionadas_display:
+		for i, display in enumerate(metricas_disponibles):
+			if metrica_display == display:
+				metricas_seleccionadas.append(metricas_display[i])
+
+	if metricas_seleccionadas:
+		# Espaciado entre selector y gráfico
+		st.markdown("<br>", unsafe_allow_html=True)
+		
+		# === GRÁFICO DE BARRAS COMPARATIVO ===
+		# Optimización con cache - crear hash del jugador
+		datos_jugador_dict = datos_jugador.to_dict() if hasattr(datos_jugador, 'to_dict') else dict(datos_jugador)
+		
+		# Calcular estadísticas grupales para comparación
+		with st.spinner("Calculando estadísticas grupales para comparación..."):
+			df_categoria = procesar_datos_categoria(df, categoria)
+			
+			# Convertir metricas_columnas al formato correcto para calcular_estadisticas_completas_categoria
+			# Formato esperado: {"CUAD DER (N)": "CUAD IZQ (N)", ...}
+			columnas_tabla = {}
+			for metrica, (col_der, col_izq) in metricas_columnas.items():
+				if metrica not in ["IMTP Total", "CMJ FP Total", "CMJ FF Total"]:  # Solo bilaterales
+					columnas_tabla[col_der] = col_izq
+			
+			# Definir columnas totales para estadísticas completas
+			columnas_totales = ["F PICO (IMTP) (N)", "FP (CMJ) (N)", "FF (CMJ) (N)"]
+			estadisticas_grupales = calcular_estadisticas_completas_categoria(df_categoria, columnas_tabla, columnas_totales)
+		
+		# Generar gráfico comparativo con cache optimizado
+		fig_multifuerza_comparativo = crear_grafico_multifuerza_comparativo(
+			datos_jugador_dict, 
+			estadisticas_grupales, 
+			tuple(metricas_seleccionadas), 
+			metricas_columnas, 
+			jugador
+		)
+		
+		# Mostrar gráfico con animación
+		st.markdown("""
+		<div style="animation: fadeInUp 0.8s ease-out;">
+		""", unsafe_allow_html=True)
+		
+		st.plotly_chart(fig_multifuerza_comparativo, use_container_width=True, config=PLOTLY_CONFIG)
+		
+		st.markdown("</div>", unsafe_allow_html=True)
+		
+		# === RADAR Z-SCORE COMPARATIVO ===
+		st.markdown("<br><br>", unsafe_allow_html=True)
+		
+		# Header para el radar comparativo
+		st.markdown(f"""
+		<div style='background: linear-gradient(90deg, rgba(220, 38, 38, 0.8), rgba(17, 24, 39, 0.8));
+					border-left: 4px solid rgba(220, 38, 38, 1); padding: 15px; border-radius: 8px;'>
+			<h4 style='margin: 0; color: white; font-family: "Source Sans Pro", sans-serif; font-weight: 600; font-size: 1.5rem; line-height: 1.2; padding: 0.75rem 0 1rem;'>
+				Radar Comparativo Z-Score
+			</h4>
+		</div>
+		""", unsafe_allow_html=True)
+		
+		# Espaciado para mejorar el estilo visual
+		st.markdown("<br>", unsafe_allow_html=True)
+		
+		# Calcular estadísticas poblacionales para radar comparativo
+		with st.spinner("Calculando estadísticas para radar comparativo..."):
+			df_categoria = procesar_datos_categoria(df, categoria)
+			estadisticas_radar = calcular_zscores_radar_simple(df_categoria, METRICAS_ZSCORE_RADAR_SIMPLE)
+		
+		# Generar Z-Scores del jugador y datos grupales
+		if estadisticas_radar:
+			zscores_jugador = generar_zscores_radar_simple(datos_jugador, estadisticas_radar, METRICAS_ZSCORE_RADAR_SIMPLE)
+			
+			# Datos grupales para comparación (siempre Z=0)
+			datos_grupo_radar = {}
+			for metrica_key, stats in estadisticas_radar.items():
+				if metrica_key in METRICAS_ZSCORE_RADAR_SIMPLE:
+					metrica_label = METRICAS_ZSCORE_RADAR_SIMPLE[metrica_key]
+					datos_grupo_radar[metrica_label] = {
+						'zscore': 0,  # Media del grupo siempre es 0
+						'valor_original': stats['media']
+					}
+			
+			# Radar chart comparativo - pantalla completa
+			fig_radar_comparativo = crear_radar_zscore_comparativo(
+				zscores_jugador, 
+				datos_grupo_radar, 
+				jugador, 
+				categoria
+			)
+			
+			radar_config = PLOTLY_CONFIG.copy()
+			radar_config['toImageButtonOptions'].update({
+				'filename': f'radar_comparativo_{jugador}_{categoria}',
+				'height': 650,
+				'width': 800
+			})
+			
+			st.plotly_chart(fig_radar_comparativo, use_container_width=True, config=radar_config)
+			
+		else:
+			st.warning("No se pudieron calcular las estadísticas para el radar comparativo.")
+		
+		# === TABLA COMPARATIVA ===
+		st.markdown("<br><br>", unsafe_allow_html=True)
+		
+		# Header para la tabla comparativa
+		st.markdown(f"""
+		<div style='background: linear-gradient(90deg, rgba(220, 38, 38, 0.8), rgba(17, 24, 39, 0.8));
+					border-left: 4px solid rgba(220, 38, 38, 1); padding: 15px; border-radius: 8px;'>
+			<h4 style='margin: 0; color: white; font-family: "Source Sans Pro", sans-serif; font-weight: 600; font-size: 1.5rem; line-height: 1.2; padding: 0.75rem 0 1rem;'>
+				Tabla Comparativa - {jugador} vs {categoria}
+			</h4>
+		</div>
+		""", unsafe_allow_html=True)
+		
+		st.markdown("<br>", unsafe_allow_html=True)
+		
+		# Crear tabla comparativa
+		tabla_comparativa = {}
+		
+		for metrica in metricas_seleccionadas:
+			if metrica in ["IMTP Total", "CMJ FP Total", "CMJ FF Total"]:
+				# Métricas totales
+				col_total = metricas_columnas[metrica][0]
+				if col_total in estadisticas_grupales['media']:
+					val_jugador = datos_jugador.get(col_total, 0)
+					val_grupo = estadisticas_grupales['media'][col_total]
+					diferencia = val_jugador - val_grupo
+					porcentaje = ((val_jugador / val_grupo) * 100 - 100) if val_grupo > 0 else 0
+					
+					tabla_comparativa[metrica] = {
+						f'{jugador}': f"{val_jugador:.1f} N",
+						f'Media {categoria}': f"{val_grupo:.1f} N",
+						'Diferencia': f"{diferencia:+.1f} N",
+						'% vs Grupo': f"{porcentaje:+.1f}%"
+					}
+			else:
+				# Métricas bilaterales - mostrar promedio
+				col_der, col_izq = metricas_columnas[metrica]
+				if col_der in estadisticas_grupales['media'] and col_izq in estadisticas_grupales['media']:
+					val_der_jugador = datos_jugador.get(col_der, 0)
+					val_izq_jugador = datos_jugador.get(col_izq, 0)
+					promedio_jugador = (val_der_jugador + val_izq_jugador) / 2
+					
+					val_der_grupo = estadisticas_grupales['media'][col_der]
+					val_izq_grupo = estadisticas_grupales['media'][col_izq]
+					promedio_grupo = (val_der_grupo + val_izq_grupo) / 2
+					
+					diferencia = promedio_jugador - promedio_grupo
+					porcentaje = ((promedio_jugador / promedio_grupo) * 100 - 100) if promedio_grupo > 0 else 0
+					
+					tabla_comparativa[metrica] = {
+						f'{jugador}': f"{promedio_jugador:.1f} N",
+						f'Media {categoria}': f"{promedio_grupo:.1f} N",
+						'Diferencia': f"{diferencia:+.1f} N",
+						'% vs Grupo': f"{porcentaje:+.1f}%"
+					}
+		
+		# Convertir a DataFrame y transponer
+		df_comparativo = pd.DataFrame(tabla_comparativa).T
+		
+		# Mostrar tabla con estilo
+		st.dataframe(
+			df_comparativo.style.apply(
+				lambda x: [
+					'background-color: rgba(220, 38, 38, 0.15); font-weight: bold;',  # Columna jugador
+					'background-color: rgba(59, 130, 246, 0.15);',                   # Columna grupo
+					'background-color: rgba(31, 41, 55, 0.15);',                     # Diferencia
+					'background-color: rgba(255, 193, 7, 0.15);'                     # Porcentaje
+				], axis=1
+			).set_table_styles([
+				{'selector': 'th.col_heading', 'props': 'background-color: rgba(220, 38, 38, 0.3); color: white; font-weight: bold;'},
+				{'selector': 'th.row_heading', 'props': 'background-color: rgba(31, 41, 55, 0.8); color: white; font-weight: bold; text-align: left;'},
+				{'selector': 'td', 'props': 'text-align: center; padding: 8px;'}
+			]),
+			use_container_width=True
+		)
+		
+	else:
+		st.info("Selecciona al menos una métrica para visualizar la comparación.")

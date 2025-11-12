@@ -10,7 +10,7 @@ from config.settings import DATA_PATH
 from utils.ui_utils import inicializar_session_state, aplicar_estilos_css, crear_header_principal, crear_footer, configurar_tema_oscuro
 from utils.data_utils import cargar_datos_optimizado
 from components.sidebar import crear_sidebar
-from modules.fuerza_analysis import analizar_fuerza, analizar_fuerza_grupal
+from modules.fuerza_analysis import analizar_fuerza, analizar_fuerza_grupal, analizar_fuerza_comparativo
 
 # ========= CONFIGURACIÓN DE PÁGINA ==========
 st.set_page_config(
@@ -104,8 +104,7 @@ def main():
 		
 		# Análisis por sección
 		if seccion == "Fuerza":
-			st.markdown("### 🔧 Módulo en Desarrollo")
-			st.info("La comparación de fuerza estará disponible próximamente.")
+			analizar_fuerza_comparativo(df, datos_jugador, jugador, categoria)
 			
 		elif seccion == "Movilidad":
 			st.markdown("### 🔧 Módulo en Desarrollo")

@@ -1209,3 +1209,520 @@ def crear_grafico_distribucion_grupal(estadisticas_radar_grupal, categoria_displ
 	)
 	
 	return fig
+
+@st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando gráfico comparativo...")
+def crear_grafico_multifuerza_comparativo(datos_jugador_hash, estadisticas_grupales, metricas_seleccionadas, metricas_columnas, jugador_nombre):
+	"""Crea gráfico de multifuerza COMPARATIVO (Jugador vs Grupo superpuesto)"""
+	# Reconstruir datos del jugador desde hash
+	datos_jugador = datos_jugador_hash
+	
+	# Separar métricas bilaterales y totales
+	metricas_bilaterales = []
+	metricas_totales = []
+	
+	# Datos del JUGADOR
+	barras_der_jugador, barras_izq_jugador, nombres_bilaterales = [], [], []
+	valores_totales_jugador, nombres_totales = [], []
+	lsi_labels_jugador = {}
+	
+	# Datos del GRUPO
+	barras_der_grupo, barras_izq_grupo = [], []
+	valores_totales_grupo = []
+
+	for metrica in metricas_seleccionadas:
+		# Métricas totales (no bilaterales)
+		if metrica in ["IMTP Total", "CMJ FP Total", "CMJ FF Total"]:
+			# JUGADOR
+			col_total = metricas_columnas[metrica][0]
+			val_total_jugador = datos_jugador.get(col_total, 0)
+			valores_totales_jugador.append(val_total_jugador)
+			nombres_totales.append(metrica)
+			metricas_totales.append(metrica)
+			
+			# GRUPO
+			if col_total in estadisticas_grupales['media']:
+				val_total_grupo = estadisticas_grupales['media'][col_total]
+				valores_totales_grupo.append(val_total_grupo)
+			else:
+				valores_totales_grupo.append(0)
+			
+		# Métricas bilaterales tradicionales
+		else:
+			col_der, col_izq = metricas_columnas[metrica]
+			
+			# JUGADOR
+			val_der_jugador = datos_jugador.get(col_der, 0)
+			val_izq_jugador = datos_jugador.get(col_izq, 0)
+			barras_der_jugador.append(val_der_jugador)
+			barras_izq_jugador.append(val_izq_jugador)
+			nombres_bilaterales.append(metrica)
+			metricas_bilaterales.append(metrica)
+			
+			# LSI del jugador
+			if val_der_jugador > 0 and val_izq_jugador > 0:
+				lsi_val_jugador = (min(val_der_jugador, val_izq_jugador) / max(val_der_jugador, val_izq_jugador)) * 100
+				lsi_labels_jugador[metrica] = lsi_val_jugador
+			
+			# GRUPO
+			if col_der in estadisticas_grupales['media'] and col_izq in estadisticas_grupales['media']:
+				val_der_grupo = estadisticas_grupales['media'][col_der]
+				val_izq_grupo = estadisticas_grupales['media'][col_izq]
+				barras_der_grupo.append(val_der_grupo)
+				barras_izq_grupo.append(val_izq_grupo)
+			else:
+				barras_der_grupo.append(0)
+				barras_izq_grupo.append(0)
+
+	fig = go.Figure()
+
+	# === BARRAS DEL GRUPO (FONDO - SEMITRANSPARENTES) ===
+	if nombres_bilaterales:
+		# Grupo Derecho
+		fig.add_trace(go.Bar(
+			x=nombres_bilaterales,
+			y=barras_der_grupo,
+			name="🔵 Grupo Derecho",
+			marker=dict(
+				color="rgba(59, 130, 246, 0.4)",
+				line=dict(color="rgba(59, 130, 246, 0.8)", width=1),
+				opacity=0.6
+			),
+			text=[f"{v:.0f}" for v in barras_der_grupo],
+			textposition="outside",
+			textfont=dict(size=11, color="rgba(59, 130, 246, 0.9)", family="Roboto"),
+			hovertemplate='<b>🔵 Grupo Derecho</b><br>%{x}: %{y:.0f} N<br><i>Media grupal</i><extra></extra>',
+			offsetgroup=1,
+			hoverlabel=dict(
+				bgcolor="rgba(59, 130, 246, 0.9)",
+				bordercolor="rgba(59, 130, 246, 1)",
+				font=dict(color="white", family="Roboto")
+			)
+		))
+
+		# Grupo Izquierdo
+		fig.add_trace(go.Bar(
+			x=nombres_bilaterales,
+			y=barras_izq_grupo,
+			name="🔵 Grupo Izquierdo",
+			marker=dict(
+				color="rgba(59, 130, 246, 0.3)",
+				line=dict(color="rgba(59, 130, 246, 0.6)", width=1),
+				opacity=0.5
+			),
+			text=[f"{v:.0f}" for v in barras_izq_grupo],
+			textposition="outside",
+			textfont=dict(size=11, color="rgba(59, 130, 246, 0.8)", family="Roboto"),
+			hovertemplate='<b>🔵 Grupo Izquierdo</b><br>%{x}: %{y:.0f} N<br><i>Media grupal</i><extra></extra>',
+			offsetgroup=2,
+			hoverlabel=dict(
+				bgcolor="rgba(59, 130, 246, 0.9)",
+				bordercolor="rgba(59, 130, 246, 1)",
+				font=dict(color="white", family="Roboto")
+			)
+		))
+
+	# === BARRAS DEL JUGADOR (PRIMER PLANO - COLORES ORIGINALES) ===
+	if nombres_bilaterales:
+		# Jugador Derecho
+		fig.add_trace(go.Bar(
+			x=nombres_bilaterales,
+			y=barras_der_jugador,
+			name=f"🔴 {jugador_nombre} Derecho",
+			marker=dict(
+				color=COLORES['rojo_colon'],
+				pattern=dict(
+					shape="",
+					bgcolor="rgba(220, 38, 38, 0.3)",
+					fgcolor="rgba(220, 38, 38, 1)"
+				),
+				opacity=0.9
+			),
+			text=[f"{v:.0f} N" for v in barras_der_jugador],
+			textposition="outside",
+			textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
+			hovertemplate=f'<b>🔴 {jugador_nombre} Derecho</b><br>%{{x}}: %{{y:.0f}} N<br><i>Jugador individual</i><extra></extra>',
+			offsetgroup=3,
+			hoverlabel=dict(
+				bgcolor="rgba(220, 38, 38, 0.9)",
+				bordercolor="rgba(220, 38, 38, 1)",
+				font=dict(color="white", family="Roboto")
+			)
+		))
+
+		# Jugador Izquierdo
+		fig.add_trace(go.Bar(
+			x=nombres_bilaterales,
+			y=barras_izq_jugador,
+			name=f"⚫ {jugador_nombre} Izquierdo",
+			marker=dict(
+				color=COLORES['negro_colon'],
+				pattern=dict(
+					shape="",
+					bgcolor="rgba(31, 41, 55, 0.3)",
+					fgcolor="rgba(31, 41, 55, 1)"
+				),
+				opacity=0.9
+			),
+			text=[f"{v:.0f} N" for v in barras_izq_jugador],
+			textposition="outside",
+			textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
+			hovertemplate=f'<b>⚫ {jugador_nombre} Izquierdo</b><br>%{{x}}: %{{y:.0f}} N<br><i>Jugador individual</i><extra></extra>',
+			offsetgroup=4,
+			hoverlabel=dict(
+				bgcolor="rgba(31, 41, 55, 0.9)",
+				bordercolor="rgba(31, 41, 55, 1)",
+				font=dict(color="white", family="Roboto")
+			)
+		))
+
+	# === MÉTRICAS TOTALES ===
+	if nombres_totales:
+		# Grupo Total
+		fig.add_trace(go.Bar(
+			x=nombres_totales,
+			y=valores_totales_grupo,
+			name="🔵 Grupo Total",
+			marker=dict(
+				color="rgba(59, 130, 246, 0.4)",
+				line=dict(color="rgba(59, 130, 246, 0.8)", width=1),
+				opacity=0.6
+			),
+			text=[f"{v:.0f}" for v in valores_totales_grupo],
+			textposition="outside",
+			textfont=dict(size=11, color="rgba(59, 130, 246, 0.9)", family="Roboto"),
+			hovertemplate='<b>🔵 Grupo Total</b><br>%{x}: %{y:.0f} N<br><i>Media grupal bilateral</i><extra></extra>',
+			offsetgroup=5,
+			hoverlabel=dict(
+				bgcolor="rgba(59, 130, 246, 0.9)",
+				bordercolor="rgba(59, 130, 246, 1)",
+				font=dict(color="white", family="Roboto")
+			)
+		))
+
+		# Jugador Total
+		fig.add_trace(go.Bar(
+			x=nombres_totales,
+			y=valores_totales_jugador,
+			name=f"🟡 {jugador_nombre} Total",
+			marker=dict(
+				color="rgba(255, 193, 7, 0.9)",
+				pattern=dict(
+					shape="",
+					bgcolor="rgba(255, 193, 7, 0.3)",
+					fgcolor="rgba(255, 193, 7, 1)"
+				),
+				opacity=0.9
+			),
+			text=[f"{v:.0f} N" for v in valores_totales_jugador],
+			textposition="outside",
+			textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
+			hovertemplate=f'<b>🟡 {jugador_nombre} Total</b><br>%{{x}}: %{{y:.0f}} N<br><i>Valor bilateral combinado</i><extra></extra>',
+			offsetgroup=6,
+			hoverlabel=dict(
+				bgcolor="rgba(255, 193, 7, 0.9)",
+				bordercolor="rgba(255, 193, 7, 1)",
+				font=dict(color="white", family="Roboto")
+			)
+		))
+
+	# === LSI ANNOTATIONS - SOLO PARA EL JUGADOR ===
+	for i, name in enumerate(nombres_bilaterales):
+		lsi_val_jugador = lsi_labels_jugador.get(name)
+		
+		if lsi_val_jugador and lsi_val_jugador > 0:
+			# Determinar color según rango LSI
+			if 90 <= lsi_val_jugador <= 110:
+				lsi_color = COLORES['verde_optimo']
+				border_color = "rgba(50, 205, 50, 1)"
+			elif 80 <= lsi_val_jugador < 90 or 110 < lsi_val_jugador <= 120:
+				lsi_color = COLORES['naranja_alerta']
+				border_color = "rgba(255, 165, 0, 1)"
+			else:
+				lsi_color = COLORES['rojo_riesgo']
+				border_color = "rgba(255, 69, 0, 1)"
+			
+			# Calcular altura máxima entre jugador y grupo
+			max_altura = max(
+				barras_der_jugador[i] if i < len(barras_der_jugador) else 0,
+				barras_izq_jugador[i] if i < len(barras_izq_jugador) else 0,
+				barras_der_grupo[i] if i < len(barras_der_grupo) else 0,
+				barras_izq_grupo[i] if i < len(barras_izq_grupo) else 0
+			)
+			
+			fig.add_annotation(
+				text=f"<b>LSI: {lsi_val_jugador:.1f}%</b>",
+				x=name,
+				y=max_altura * 1.65,
+				showarrow=False,
+				font=dict(size=11, color="white", family="Roboto", weight="bold"),
+				xanchor="center",
+				align="center",
+				bgcolor=lsi_color,
+				bordercolor=border_color,
+				borderwidth=2,
+				borderpad=8,
+				opacity=0.95
+			)
+	
+	# Agregar logo del club como marca de agua
+	try:
+		escudo_base64 = get_base64_image(ESCUDO_PATH)
+		fig.add_layout_image(
+			dict(
+				source=f"data:image/png;base64,{escudo_base64}",
+				xref="paper", yref="paper",
+				x=0.95, y=0.05,
+				sizex=0.15, sizey=0.15,
+				xanchor="right", yanchor="bottom",
+				opacity=0.1,
+				layer="below"
+			)
+		)
+	except:
+		pass
+
+	fig.update_layout(
+		barmode="group",
+		bargap=0.2,
+		bargroupgap=0.05,
+		title=dict(
+			text=f"Comparación {jugador_nombre} vs Grupo<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Métricas de Fuerza – Individual vs Media Grupal</span>",
+			font=dict(size=18, family="Source Sans Pro", weight=600, color="rgba(220, 38, 38, 1)"),
+			y=0.94,
+			x=0.5,
+			xanchor="center"
+		),
+		xaxis=dict(
+			title=dict(
+				text="Métrica", 
+				font=dict(size=14, family="Roboto"),
+				standoff=20
+			),
+			tickfont=dict(size=12, family="Roboto"),
+			showgrid=True,
+			gridwidth=1,
+			gridcolor="rgba(255,255,255,0.1)",
+			tickangle=0,
+			categoryorder="array",
+			categoryarray=nombres_bilaterales + nombres_totales
+		),
+		yaxis=dict(
+			title=dict(
+				text="Fuerza (N)", 
+				font=dict(size=14, family="Roboto"),
+				standoff=15
+			),
+			tickfont=dict(size=12, family="Roboto"),
+			showgrid=True,
+			gridwidth=1,
+			gridcolor="rgba(255,255,255,0.1)",
+			zeroline=True,
+			zerolinewidth=2,
+			zerolinecolor="rgba(255,255,255,0.3)"
+		),
+		legend=dict(
+			orientation="h",
+			yanchor="bottom",
+			y=1.02,
+			xanchor="center",
+			x=0.5,
+			font=dict(size=11, family="Roboto"),
+			bgcolor="rgba(220, 38, 38, 0.2)",
+			bordercolor="rgba(220, 38, 38, 0.5)",
+			borderwidth=2
+		),
+		plot_bgcolor=COLORES['fondo_oscuro'],
+		paper_bgcolor=COLORES['fondo_oscuro'],
+		font=dict(color="white", family="Roboto"),
+		height=700,
+		margin=dict(t=140, b=60, l=60, r=60),
+		showlegend=True,
+		transition=dict(
+			duration=800,
+			easing="cubic-in-out"
+		),
+		hovermode="x unified",
+		hoverdistance=100,
+		spikedistance=1000
+	)
+
+	return fig
+
+@st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando radar comparativo...")
+def crear_radar_zscore_comparativo(zscores_jugador, datos_grupo_radar, jugador_nombre, categoria_nombre):
+	"""
+	Crea un radar chart COMPARATIVO (Jugador vs Grupo superpuesto)
+	Combina el jugador individual con la línea base del grupo
+	
+	Args:
+		zscores_jugador: Dict con Z-Scores del jugador individual
+		datos_grupo_radar: Dict con datos grupales (Z-Score siempre 0)
+		jugador_nombre: Nombre del jugador
+		categoria_nombre: Nombre de la categoría/grupo
+		
+	Returns:
+		Figura de Plotly con radar chart comparativo
+	"""
+	if not zscores_jugador or len(zscores_jugador) == 0:
+		# Crear gráfico vacío si no hay datos del jugador
+		fig = go.Figure()
+		fig.add_annotation(
+			text="<b>Sin datos para radar comparativo</b><br>Verificar métricas del jugador",
+			x=0.5, y=0.5,
+			xref="paper", yref="paper",
+			showarrow=False,
+			font=dict(size=16, color="white", family="Roboto"),
+			align="center"
+		)
+		fig.update_layout(
+			plot_bgcolor=COLORES['fondo_oscuro'],
+			paper_bgcolor=COLORES['fondo_oscuro'],
+			height=500
+		)
+		return fig
+	
+	# Extraer datos para el radar comparativo
+	valores_jugador = []
+	valores_grupo = []
+	etiquetas = []
+	valores_originales_jugador = []
+	medias_poblacion = []
+	
+	# Orden específico para mejor visualización
+	orden_metricas = ['CUAD', 'ISQ Wollin', 'IMTP', 'CMJ Propulsiva', 'CMJ Frenado']
+	
+	for metrica in orden_metricas:
+		if metrica in zscores_jugador:
+			# Datos del jugador
+			data_jugador = zscores_jugador[metrica]
+			valores_jugador.append(data_jugador['zscore'])
+			etiquetas.append(metrica)
+			valores_originales_jugador.append(data_jugador['valor_original'])
+			medias_poblacion.append(data_jugador['media_poblacion'])
+			
+			# Datos del grupo (siempre 0 en Z-Score)
+			valores_grupo.append(0)  # Media del grupo siempre es 0 en Z-Score
+	
+	if not valores_jugador:
+		# Sin valores válidos
+		fig = go.Figure()
+		fig.add_annotation(
+			text="<b>Sin Z-Scores válidos para comparación</b><br>Verificar datos del jugador",
+			x=0.5, y=0.5,
+			xref="paper", yref="paper",
+			showarrow=False,
+			font=dict(size=16, color="white", family="Roboto"),
+			align="center"
+		)
+		fig.update_layout(
+			plot_bgcolor=COLORES['fondo_oscuro'],
+			paper_bgcolor=COLORES['fondo_oscuro'],
+			height=500
+		)
+		return fig
+	
+	# Crear el radar chart comparativo
+	fig = go.Figure()
+	
+	# === LÍNEA BASE DEL GRUPO (FONDO - SEMITRANSPARENTE) ===
+	fig.add_trace(go.Scatterpolar(
+		r=valores_grupo,  # Todos los valores son 0 (centro)
+		theta=etiquetas,
+		fill='toself',
+		name=f'Media {categoria_nombre}',
+		line=dict(
+			color="rgba(59, 130, 246, 0.6)", 
+			width=4,
+			dash='dash'
+		),
+		fillcolor="rgba(59, 130, 246, 0.15)",
+		marker=dict(
+			size=12,
+			color="rgba(59, 130, 246, 0.6)",
+			line=dict(width=3, color="white"),
+			opacity=0.8,
+			symbol="circle"
+		),
+		hovertemplate='<b>%{theta}</b><br>' +
+					  'Media del Grupo (Z=0)<br>' +
+					  'Línea base de referencia<br>' +
+					  '<extra></extra>'
+	))
+	
+	# === ÁREA DEL JUGADOR (PRIMER PLANO - COLORES ORIGINALES) ===
+	fig.add_trace(go.Scatterpolar(
+		r=valores_jugador,
+		theta=etiquetas,
+		fill='toself',
+		name=jugador_nombre,
+		line=dict(
+			color="rgba(220, 38, 38, 1)",  # Rojo original del club
+			width=5
+		),
+		fillcolor="rgba(220, 38, 38, 0.4)",
+		marker=dict(
+			size=15,
+			color="rgba(220, 38, 38, 1)",
+			line=dict(width=4, color="white"),
+			opacity=1.0,
+			symbol="circle"
+		),
+		hovertemplate='<b>%{theta}</b><br>' +
+					  f'<b>{jugador_nombre}</b><br>' +
+					  'Z-Score: %{r:.2f}<br>' +
+					  'Valor: %{customdata[0]:.1f}<br>' +
+					  'Media Grupo: %{customdata[1]:.1f}<br>' +
+					  '<extra></extra>',
+		customdata=list(zip(valores_originales_jugador, medias_poblacion))
+	))
+	
+	# Configuración del layout estilo comparativo
+	fig.update_layout(
+		polar=dict(
+			radialaxis=dict(
+				visible=True,
+				range=[-2.5, 2.5],
+				tickvals=[-2, -1, 0, 1, 2],
+				ticktext=['-2', '-1', '0', '+1', '+2'],
+				tickfont=dict(size=14, color="rgba(255,255,255,0.9)", family="Roboto"),
+				gridcolor="rgba(255,255,255,0.3)",
+				linecolor="rgba(255,255,255,0.5)",
+				showticklabels=True,
+				tickangle=0
+			),
+			angularaxis=dict(
+				tickfont=dict(size=16, color="white", family="Source Sans Pro", weight=600),
+				linecolor="rgba(255,255,255,0.6)",
+				gridcolor="rgba(255,255,255,0.3)",
+				rotation=90,  # CUAD arriba
+				direction="clockwise"
+			),
+			bgcolor=COLORES['fondo_oscuro']
+		),
+		showlegend=True,
+		legend=dict(
+			orientation="h",
+			yanchor="bottom",
+			y=1.02,
+			xanchor="center",
+			x=0.5,
+			font=dict(size=12, family="Roboto"),
+			bgcolor="rgba(220, 38, 38, 0.2)",
+			bordercolor="rgba(220, 38, 38, 0.5)",
+			borderwidth=2
+		),
+		title=dict(
+			text=f"<b style='color: rgba(220, 38, 38, 1); font-size: 24px;'>{jugador_nombre} vs {categoria_nombre}</b><br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Comparación Individual vs Media Grupal</span>",
+			font=dict(size=20, color="white", family="Source Sans Pro", weight=600),
+			x=0.5,
+			xanchor="center",
+			y=0.95
+		),
+		plot_bgcolor=COLORES['fondo_oscuro'],
+		paper_bgcolor=COLORES['fondo_oscuro'],
+		font=dict(color="white", family="Source Sans Pro"),
+		height=650,  # Más alto para acomodar leyenda
+		margin=dict(t=120, b=100, l=80, r=80)  # Márgenes ajustados para leyenda
+	)
+	
+	return fig

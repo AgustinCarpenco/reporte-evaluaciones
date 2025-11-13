@@ -95,6 +95,14 @@ METRICAS_ZSCORE_RADAR_SIMPLE = {
 	'WOLLIN_PROMEDIO': 'ISQ Wollin'
 }
 
+# Configuración de métricas de movilidad para radar
+METRICAS_ZSCORE_MOVILIDAD = {
+	# Para bilaterales, calcular promedio automáticamente
+	'AKE_PROMEDIO': 'AKE',
+	'THOMAS_PROMEDIO': 'THOMAS',
+	'LUNGE_PROMEDIO': 'LUNGE'
+}
+
 # Configuración legacy para compatibilidad (si existe en Excel)
 Z_SCORE_METRICAS = {
 	'Z SCORE CUAD Der': 'CUAD Der',

@@ -5,7 +5,7 @@ Módulo de visualizaciones - Gráficos y charts
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
-from config.settings import CACHE_TTL, COLORES, Z_SCORE_METRICAS, METRICAS_ZSCORE_FUERZA, METRICAS_ZSCORE_RADAR_SIMPLE, ESCUDO_PATH
+from config.settings import CACHE_TTL, COLORES, Z_SCORE_METRICAS, METRICAS_ZSCORE_FUERZA, METRICAS_ZSCORE_RADAR_SIMPLE, METRICAS_ZSCORE_MOVILIDAD, ESCUDO_PATH
 from utils.ui_utils import get_base64_image
 
 @st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando gráfico de fuerza...")
@@ -1723,6 +1723,358 @@ def crear_radar_zscore_comparativo(zscores_jugador, datos_grupo_radar, jugador_n
 		font=dict(color="white", family="Source Sans Pro"),
 		height=650,  # Más alto para acomodar leyenda
 		margin=dict(t=120, b=100, l=80, r=80)  # Márgenes ajustados para leyenda
+	)
+	
+	return fig
+
+# ========= FUNCIONES DE MOVILIDAD =========
+
+@st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando gráfico de movilidad...")
+def crear_grafico_multimovilidad(datos_jugador_hash, metricas_seleccionadas, metricas_columnas):
+	"""Crea gráfico de multimovilidad con cache optimizado - EXACTAMENTE IGUAL A FUERZA"""
+	# Reconstruir datos del jugador desde hash
+	datos_jugador = datos_jugador_hash
+	
+	# Solo métricas bilaterales en movilidad (no hay totales)
+	barras_der, barras_izq, nombres_bilaterales = [], [], []
+	lsi_labels = {}
+
+	for metrica in metricas_seleccionadas:
+		col_der, col_izq = metricas_columnas[metrica]
+		val_der = datos_jugador.get(col_der, 0)
+		val_izq = datos_jugador.get(col_izq, 0)
+		barras_der.append(val_der)
+		barras_izq.append(val_izq)
+		nombres_bilaterales.append(metrica)
+		
+		# Calcular LSI para métricas bilaterales
+		if val_der > 0 and val_izq > 0:
+			lsi_val = (min(val_der, val_izq) / max(val_der, val_izq)) * 100
+			lsi_labels[metrica] = lsi_val
+
+	fig = go.Figure()
+
+	# Agregar trazas para métricas bilaterales - COLORES EXACTAMENTE IGUALES A FUERZA
+	fig.add_trace(go.Bar(
+		x=nombres_bilaterales,
+		y=barras_der,
+		name="🔴 Derecho",
+		marker=dict(
+			color=COLORES['rojo_colon'],
+			pattern=dict(
+				shape="",
+				bgcolor="rgba(220, 38, 38, 0.3)",
+				fgcolor="rgba(220, 38, 38, 1)"
+			),
+			opacity=0.9
+		),
+		text=[f"{v:.0f}°" for v in barras_der],
+		textposition="outside",
+		textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
+		hovertemplate='<b>🔴 Derecho</b><br>%{x}: %{y:.0f}°<br><i>Lado dominante</i><extra></extra>',
+		offsetgroup=1,
+		hoverlabel=dict(
+			bgcolor="rgba(220, 38, 38, 0.9)",
+			bordercolor="rgba(220, 38, 38, 1)",
+			font=dict(color="white", family="Roboto")
+		)
+	))
+
+	fig.add_trace(go.Bar(
+		x=nombres_bilaterales,
+		y=barras_izq,
+		name="⚫ Izquierdo",
+		marker=dict(
+			color=COLORES['negro_colon'],
+			pattern=dict(
+				shape="",
+				bgcolor="rgba(31, 41, 55, 0.3)",
+				fgcolor="rgba(31, 41, 55, 1)"
+			),
+			opacity=0.9
+		),
+		text=[f"{v:.0f}°" for v in barras_izq],
+		textposition="outside",
+		textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
+		hovertemplate='<b>⚫ Izquierdo</b><br>%{x}: %{y:.0f}°<br><i>Lado no dominante</i><extra></extra>',
+		offsetgroup=2,
+		hoverlabel=dict(
+			bgcolor="rgba(31, 41, 55, 0.9)",
+			bordercolor="rgba(31, 41, 55, 1)",
+			font=dict(color="white", family="Roboto")
+		)
+	))
+
+	# LSI annotations - EXACTAMENTE IGUAL A FUERZA
+	for i, name in enumerate(nombres_bilaterales):
+		lsi_val = lsi_labels.get(name)
+		
+		if lsi_val and lsi_val > 0:
+			# Determinar color según rango LSI
+			if 90 <= lsi_val <= 110:  # Zona óptima
+				lsi_color = COLORES['verde_optimo']
+				border_color = "rgba(50, 205, 50, 1)"
+			elif 80 <= lsi_val < 90 or 110 < lsi_val <= 120:  # Zona de alerta
+				lsi_color = COLORES['naranja_alerta']
+				border_color = "rgba(255, 165, 0, 1)"
+			else:  # Zona de riesgo
+				lsi_color = COLORES['rojo_riesgo']
+				border_color = "rgba(255, 69, 0, 1)"
+			
+			fig.add_annotation(
+				text=f"<b>LSI: {lsi_val:.1f}%</b>",
+				x=name,
+				y=max(barras_der[i], barras_izq[i]) * 1.55,
+				showarrow=False,
+				font=dict(size=11, color="white", family="Roboto", weight="bold"),
+				xanchor="center",
+				align="center",
+				bgcolor=lsi_color,
+				bordercolor=border_color,
+				borderwidth=2,
+				borderpad=8,
+				opacity=0.95
+			)
+	
+	# Agregar logo del club como marca de agua - EXACTAMENTE IGUAL A FUERZA
+	try:
+		escudo_base64 = get_base64_image(ESCUDO_PATH)
+		fig.add_layout_image(
+			dict(
+				source=f"data:image/png;base64,{escudo_base64}",
+				xref="paper", yref="paper",
+				x=0.95, y=0.05,
+				sizex=0.15, sizey=0.15,
+				xanchor="right", yanchor="bottom",
+				opacity=0.1,
+				layer="below"
+			)
+		)
+	except:
+		pass
+
+	fig.update_layout(
+		barmode="group",
+		bargap=0.3,
+		bargroupgap=0.1,
+		title=dict(
+			text="Evaluación Física Integral – Atlético Colón<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Métricas de Movilidad – Bilaterales</span>",
+			font=dict(size=18, family="Source Sans Pro", weight=600, color="rgba(220, 38, 38, 1)"),
+			y=0.94,
+			x=0.5,
+			xanchor="center"
+		),
+		xaxis=dict(
+			title=dict(
+				text="Métrica", 
+				font=dict(size=14, family="Roboto"),
+				standoff=20
+			),
+			tickfont=dict(size=12, family="Roboto"),
+			showgrid=True,
+			gridwidth=1,
+			gridcolor="rgba(255,255,255,0.1)",
+			tickangle=0,
+			categoryorder="array",
+			categoryarray=nombres_bilaterales
+		),
+		yaxis=dict(
+			title=dict(
+				text="Ángulo (°)", 
+				font=dict(size=14, family="Roboto"),
+				standoff=15
+			),
+			tickfont=dict(size=12, family="Roboto"),
+			showgrid=True,
+			gridwidth=1,
+			gridcolor="rgba(255,255,255,0.1)",
+			zeroline=True,
+			zerolinewidth=2,
+			zerolinecolor="rgba(255,255,255,0.3)"
+		),
+		legend=dict(
+			orientation="h",
+			yanchor="bottom",
+			y=1.02,
+			xanchor="center",
+			x=0.5,
+			font=dict(size=12, family="Roboto"),
+			bgcolor="rgba(220, 38, 38, 0.2)",
+			bordercolor="rgba(220, 38, 38, 0.5)",
+			borderwidth=2
+		),
+		plot_bgcolor=COLORES['fondo_oscuro'],
+		paper_bgcolor=COLORES['fondo_oscuro'],
+		font=dict(color="white", family="Roboto"),
+		height=650,
+		margin=dict(t=140, b=60, l=60, r=60),
+		showlegend=True,
+		transition=dict(
+			duration=800,
+			easing="cubic-in-out"
+		),
+		hovermode="x unified",
+		hoverdistance=100,
+		spikedistance=1000
+	)
+
+	return fig
+
+@st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando radar Z-Score de movilidad...")
+def crear_radar_zscore_simple_movilidad(zscores_radar, jugador_nombre):
+	"""
+	Crea un radar chart simplificado para movilidad - EXACTAMENTE IGUAL A FUERZA
+	
+	Args:
+		zscores_radar: Dict con Z-Scores calculados (máximo 3 métricas de movilidad)
+		jugador_nombre: Nombre del jugador
+		
+	Returns:
+		Figura de Plotly con radar chart simplificado
+	"""
+	if not zscores_radar or len(zscores_radar) == 0:
+		# Crear gráfico vacío si no hay datos
+		fig = go.Figure()
+		fig.add_annotation(
+			text="<b>Sin datos para radar Z-Score</b><br>Verificar métricas del jugador",
+			x=0.5, y=0.5,
+			xref="paper", yref="paper",
+			showarrow=False,
+			font=dict(size=16, color="white", family="Roboto"),
+			align="center"
+		)
+		fig.update_layout(
+			plot_bgcolor=COLORES['fondo_oscuro'],
+			paper_bgcolor=COLORES['fondo_oscuro'],
+			height=500
+		)
+		return fig
+	
+	# Extraer datos para el radar
+	valores = []
+	etiquetas = []
+	valores_originales = []
+	medias_poblacion = []
+	
+	# Orden específico para mejor visualización de movilidad
+	orden_metricas = ['AKE', 'THOMAS', 'LUNGE']
+	
+	for metrica in orden_metricas:
+		if metrica in zscores_radar:
+			data = zscores_radar[metrica]
+			valores.append(data['zscore'])
+			etiquetas.append(metrica)
+			valores_originales.append(data['valor_original'])
+			medias_poblacion.append(data['media_poblacion'])
+	
+	if not valores:
+		# Sin valores válidos
+		fig = go.Figure()
+		fig.add_annotation(
+			text="<b>Sin Z-Scores válidos</b><br>Verificar datos del jugador",
+			x=0.5, y=0.5,
+			xref="paper", yref="paper",
+			showarrow=False,
+			font=dict(size=16, color="white", family="Roboto"),
+			align="center"
+		)
+		fig.update_layout(
+			plot_bgcolor=COLORES['fondo_oscuro'],
+			paper_bgcolor=COLORES['fondo_oscuro'],
+			height=500
+		)
+		return fig
+	
+	# Crear el radar chart estilo deportivo - EXACTAMENTE IGUAL A FUERZA
+	fig = go.Figure()
+	
+	# Línea de referencia del grupo (media = 0)
+	valores_grupo = [0] * len(etiquetas)  # Media del grupo siempre es 0 en Z-Score
+	fig.add_trace(go.Scatterpolar(
+		r=valores_grupo,
+		theta=etiquetas,
+		fill='toself',
+		name='Media del Grupo',
+		line=dict(
+			color="rgba(59, 130, 246, 0.6)", 
+			width=3,
+			dash='dash'
+		),
+		fillcolor="rgba(59, 130, 246, 0.15)",
+		marker=dict(
+			size=8,
+			color="rgba(59, 130, 246, 0.6)",
+			line=dict(width=2, color="white"),
+			opacity=0.8,
+			symbol="circle"
+		),
+		hovertemplate='<b>%{theta}</b><br>' +
+					  'Media del Grupo (Z=0)<br>' +
+					  '<extra></extra>'
+	))
+	
+	# Área rellena principal (jugador) - COLORES EXACTAMENTE IGUALES A FUERZA
+	fig.add_trace(go.Scatterpolar(
+		r=valores,
+		theta=etiquetas,
+		fill='toself',
+		name=jugador_nombre,
+		line=dict(
+			color="rgba(220, 38, 38, 1)", 
+			width=5
+		),
+		fillcolor="rgba(220, 38, 38, 0.4)",
+		marker=dict(
+			size=15,
+			color="rgba(220, 38, 38, 1)",
+			line=dict(width=4, color="white"),
+			opacity=1.0,
+			symbol="circle"
+		),
+		hovertemplate='<b>%{theta}</b><br>' +
+					  'Z-Score: %{r:.2f}<br>' +
+					  'Valor: %{customdata[0]:.1f}°<br>' +
+					  'Media: %{customdata[1]:.1f}°<br>' +
+					  '<extra></extra>',
+		customdata=list(zip(valores_originales, medias_poblacion))
+	))
+	
+	# Configuración del layout estilo deportivo mejorado - EXACTAMENTE IGUAL A FUERZA
+	fig.update_layout(
+		polar=dict(
+			radialaxis=dict(
+				visible=True,
+				range=[-2.5, 2.5],
+				tickvals=[-2, -1, 0, 1, 2],
+				ticktext=['-2', '-1', '0', '+1', '+2'],
+				tickfont=dict(size=14, color="rgba(255,255,255,0.9)", family="Roboto"),
+				gridcolor="rgba(255,255,255,0.3)",
+				linecolor="rgba(255,255,255,0.5)",
+				showticklabels=True,
+				tickangle=0
+			),
+			angularaxis=dict(
+				tickfont=dict(size=16, color="white", family="Source Sans Pro", weight=600),
+				linecolor="rgba(255,255,255,0.6)",
+				gridcolor="rgba(255,255,255,0.3)",
+				rotation=90,  # AKE arriba
+				direction="clockwise"
+			),
+			bgcolor=COLORES['fondo_oscuro']
+		),
+		showlegend=False,
+		title=dict(
+			text=f"<b style='color: rgba(220, 38, 38, 1); font-size: 24px;'>{jugador_nombre}</b><br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Perfil Z-Score Movilidad vs Grupo</span>",
+			font=dict(size=20, color="white", family="Source Sans Pro", weight=600),
+			x=0.5,
+			xanchor="center",
+			y=0.95
+		),
+		plot_bgcolor=COLORES['fondo_oscuro'],
+		paper_bgcolor=COLORES['fondo_oscuro'],
+		font=dict(color="white", family="Source Sans Pro"),
+		height=600,
+		margin=dict(t=100, b=80, l=80, r=80)  # Márgenes equilibrados sin leyenda
 	)
 	
 	return fig

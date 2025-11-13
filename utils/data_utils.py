@@ -461,6 +461,25 @@ def calcular_metricas_bilaterales_promedio(datos_jugador):
 	if wollin_der > 0 and wollin_izq > 0:
 		metricas_promedio['WOLLIN_PROMEDIO'] = (wollin_der + wollin_izq) / 2
 	
+	# === MÉTRICAS DE MOVILIDAD ===
+	# AKE promedio
+	ake_der = datos_jugador.get('AKE DER', 0)
+	ake_izq = datos_jugador.get('AKE IZQ', 0)
+	if ake_der > 0 and ake_izq > 0:
+		metricas_promedio['AKE_PROMEDIO'] = (ake_der + ake_izq) / 2
+	
+	# THOMAS promedio
+	thomas_der = datos_jugador.get('THOMAS DER', 0)
+	thomas_izq = datos_jugador.get('THOMAS IZQ', 0)
+	if thomas_der > 0 and thomas_izq > 0:
+		metricas_promedio['THOMAS_PROMEDIO'] = (thomas_der + thomas_izq) / 2
+	
+	# LUNGE promedio
+	lunge_der = datos_jugador.get('LUNGE DER', 0)
+	lunge_izq = datos_jugador.get('LUNGE IZQ', 0)
+	if lunge_der > 0 and lunge_izq > 0:
+		metricas_promedio['LUNGE_PROMEDIO'] = (lunge_der + lunge_izq) / 2
+	
 	return metricas_promedio
 
 @st.cache_data(ttl=CACHE_TTL['estadisticas'])
@@ -524,6 +543,43 @@ def calcular_zscores_radar_simple(df_categoria, metricas_radar_simple):
 			'std': round(wollin_promedios.std(ddof=1), 2),
 			'n': len(wollin_promedios),
 			'label': 'ISQ Wollin'
+		}
+	
+	# === MÉTRICAS DE MOVILIDAD ===
+	# AKE promedio
+	ake_der_vals = pd.to_numeric(df_limpio.get('AKE DER', []), errors='coerce').dropna()
+	ake_izq_vals = pd.to_numeric(df_limpio.get('AKE IZQ', []), errors='coerce').dropna()
+	if len(ake_der_vals) >= 3 and len(ake_izq_vals) >= 3:
+		ake_promedios = (ake_der_vals + ake_izq_vals) / 2
+		estadisticas['AKE_PROMEDIO'] = {
+			'media': round(ake_promedios.mean(), 2),
+			'std': round(ake_promedios.std(ddof=1), 2),
+			'n': len(ake_promedios),
+			'label': 'AKE'
+		}
+	
+	# THOMAS promedio
+	thomas_der_vals = pd.to_numeric(df_limpio.get('THOMAS DER', []), errors='coerce').dropna()
+	thomas_izq_vals = pd.to_numeric(df_limpio.get('THOMAS IZQ', []), errors='coerce').dropna()
+	if len(thomas_der_vals) >= 3 and len(thomas_izq_vals) >= 3:
+		thomas_promedios = (thomas_der_vals + thomas_izq_vals) / 2
+		estadisticas['THOMAS_PROMEDIO'] = {
+			'media': round(thomas_promedios.mean(), 2),
+			'std': round(thomas_promedios.std(ddof=1), 2),
+			'n': len(thomas_promedios),
+			'label': 'THOMAS'
+		}
+	
+	# LUNGE promedio
+	lunge_der_vals = pd.to_numeric(df_limpio.get('LUNGE DER', []), errors='coerce').dropna()
+	lunge_izq_vals = pd.to_numeric(df_limpio.get('LUNGE IZQ', []), errors='coerce').dropna()
+	if len(lunge_der_vals) >= 3 and len(lunge_izq_vals) >= 3:
+		lunge_promedios = (lunge_der_vals + lunge_izq_vals) / 2
+		estadisticas['LUNGE_PROMEDIO'] = {
+			'media': round(lunge_promedios.mean(), 2),
+			'std': round(lunge_promedios.std(ddof=1), 2),
+			'n': len(lunge_promedios),
+			'label': 'LUNGE'
 		}
 	
 	return estadisticas

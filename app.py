@@ -11,7 +11,7 @@ from utils.ui_utils import inicializar_session_state, aplicar_estilos_css, crear
 from utils.data_utils import cargar_datos_optimizado
 from components.sidebar import crear_sidebar
 from modules.fuerza_analysis import analizar_fuerza, analizar_fuerza_grupal, analizar_fuerza_comparativo
-from modules.movilidad_analysis import analizar_movilidad
+from modules.movilidad_analysis import analizar_movilidad, analizar_movilidad_grupal
 
 # ========= CONFIGURACIÓN DE PÁGINA ==========
 st.set_page_config(
@@ -88,8 +88,7 @@ def main():
 			analizar_fuerza_grupal(df, categoria)
 			
 		elif seccion == "Movilidad":
-			st.markdown("### 🔧 Módulo en Desarrollo")
-			st.info("El análisis grupal de movilidad estará disponible próximamente.")
+			analizar_movilidad_grupal(df, categoria)
 			
 		elif seccion == "Funcionalidad":
 			st.markdown("### 🔧 Módulo en Desarrollo") 

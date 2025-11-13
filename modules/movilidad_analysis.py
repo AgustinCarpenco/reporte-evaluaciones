@@ -8,7 +8,7 @@ from visualizations.charts import crear_grafico_multimovilidad, crear_radar_zsco
 from utils.data_utils import (
 	procesar_datos_categoria, calcular_estadisticas_categoria, preparar_datos_jugador,
 	calcular_zscores_automaticos, generar_zscores_jugador, calcular_zscores_radar_simple, generar_zscores_radar_simple,
-	calcular_estadisticas_completas_categoria, preparar_datos_jugador_completo
+	calcular_estadisticas_completas_categoria, preparar_datos_jugador_completo, calcular_estadisticas_distribucion_grupal
 )
 from config.settings import PLOTLY_CONFIG, METRICAS_ZSCORE_MOVILIDAD
 
@@ -216,3 +216,376 @@ def analizar_movilidad(df, datos_jugador, jugador, categoria):
 		
 	else:
 		st.info("Selecciona al menos una métrica para visualizar el gráfico.")
+
+def analizar_movilidad_grupal(df, categoria):
+	"""Realiza el análisis completo de movilidad GRUPAL - métricas agregadas"""
+	
+	# Mapeo de nombres técnicos a nombres amigables
+	mapeo_categorias = {
+		"Evaluacion_2910": "Primer Equipo",
+		"Reserva": "Reserva",
+		"4ta": "4ta División"
+	}
+	categoria_display = mapeo_categorias.get(categoria, categoria)
+	
+	# === Selección de métricas de movilidad - IGUAL QUE INDIVIDUAL ===
+	metricas_disponibles = ["AKE", "THOMAS", "LUNGE"]
+	metricas_display = ["AKE", "THOMAS", "LUNGE"]
+	metricas_columnas = {
+		"AKE": ("AKE DER", "AKE IZQ"),
+		"THOMAS": ("THOMAS DER", "THOMAS IZQ"),
+		"LUNGE": ("LUNGE DER", "LUNGE IZQ")
+	}
+
+	metricas_seleccionadas_display = st.multiselect(
+		"Selección de Métricas - Selecciona las evaluaciones para el análisis grupal:",
+		metricas_disponibles,
+		default=["AKE", "THOMAS", "LUNGE"]
+	)
+	
+	# Convertir de display a nombres reales
+	metricas_seleccionadas = []
+	for metrica_display in metricas_seleccionadas_display:
+		for i, display in enumerate(metricas_disponibles):
+			if metrica_display == display:
+				metricas_seleccionadas.append(metricas_display[i])
+
+	if metricas_seleccionadas:
+		# Espaciado entre selector y gráfico
+		st.markdown("<br>", unsafe_allow_html=True)
+		
+		# Procesar datos de la categoría para obtener estadísticas grupales
+		df_categoria = procesar_datos_categoria(df, categoria)
+		
+		# Calcular estadísticas grupales para las métricas seleccionadas
+		estadisticas_grupales = {}
+		for metrica in metricas_seleccionadas:
+			col_der, col_izq = metricas_columnas[metrica]
+			
+			# Para métricas bilaterales de movilidad, calcular medias de cada lado
+			valores_der = pd.to_numeric(df_categoria.get(col_der, []), errors='coerce').dropna()
+			valores_izq = pd.to_numeric(df_categoria.get(col_izq, []), errors='coerce').dropna()
+			
+			if len(valores_der) > 0 and len(valores_izq) > 0:
+				estadisticas_grupales[metrica] = {
+					'media_der': round(valores_der.mean(), 1),
+					'media_izq': round(valores_izq.mean(), 1),
+					'std_der': round(valores_der.std(), 1) if len(valores_der) > 1 else 0.0,
+					'std_izq': round(valores_izq.std(), 1) if len(valores_izq) > 1 else 0.0,
+					'n_jugadores': min(len(valores_der), len(valores_izq))
+				}
+		
+		# Generar gráfico grupal con cache optimizado
+		from visualizations.charts import crear_grafico_multimovilidad_grupal
+		fig_multimovilidad_grupal = crear_grafico_multimovilidad_grupal(estadisticas_grupales, tuple(metricas_seleccionadas), categoria_display)
+		
+		# Mostrar gráfico con animación
+		st.markdown("""
+		<div style="animation: fadeInUp 0.8s ease-out;">
+		""", unsafe_allow_html=True)
+		
+		st.plotly_chart(fig_multimovilidad_grupal, use_container_width=True, config=PLOTLY_CONFIG)
+		
+		st.markdown("</div>", unsafe_allow_html=True)
+		
+		# === DISTRIBUCIÓN GRUPAL ===
+		st.markdown("<br><br>", unsafe_allow_html=True)
+		
+		# Header para la distribución grupal - EXACTAMENTE IGUAL AL DE FUERZA
+		st.markdown(f"""
+		<div style='background: linear-gradient(90deg, rgba(220, 38, 38, 0.8), rgba(17, 24, 39, 0.8));
+					border-left: 4px solid rgba(220, 38, 38, 1); padding: 15px; border-radius: 8px;'>
+			<h4 style='margin: 0; color: white; font-family: "Source Sans Pro", sans-serif; font-weight: 600; font-size: 1.5rem; line-height: 1.2; padding: 0.75rem 0 1rem;'>
+				Distribución del Grupo
+			</h4>
+		</div>
+		""", unsafe_allow_html=True)
+		
+		# Espaciado para mejorar el estilo visual
+		st.markdown("<br>", unsafe_allow_html=True)
+		
+		# Calcular estadísticas poblacionales para distribución grupal DE MOVILIDAD
+		with st.spinner("Calculando distribución grupal..."):
+			# Calcular estadísticas directamente para movilidad
+			estadisticas_radar_grupal = {}
+			
+			# Definir las métricas de movilidad bilaterales
+			metricas_movilidad = {
+				'AKE': ('AKE DER', 'AKE IZQ'),
+				'THOMAS': ('THOMAS DER', 'THOMAS IZQ'),
+				'LUNGE': ('LUNGE DER', 'LUNGE IZQ')
+			}
+			
+			for metrica, (col_der, col_izq) in metricas_movilidad.items():
+				if col_der in df_categoria.columns and col_izq in df_categoria.columns:
+					# Calcular promedios bilaterales
+					valores_der = pd.to_numeric(df_categoria[col_der], errors='coerce').dropna()
+					valores_izq = pd.to_numeric(df_categoria[col_izq], errors='coerce').dropna()
+					
+					if len(valores_der) > 0 and len(valores_izq) > 0:
+						# Calcular promedio bilateral para cada jugador
+						promedios = []
+						for i in range(min(len(valores_der), len(valores_izq))):
+							if pd.notna(valores_der.iloc[i]) and pd.notna(valores_izq.iloc[i]):
+								promedio = (valores_der.iloc[i] + valores_izq.iloc[i]) / 2
+								promedios.append(promedio)
+						
+						if promedios:
+							promedios = pd.Series(promedios)
+							estadisticas_radar_grupal[f'{metrica}_PROMEDIO'] = {
+								'media': promedios.mean(),
+								'std': promedios.std() if len(promedios) > 1 else 0,
+								'minimo': promedios.min(),
+								'maximo': promedios.max(),
+								'n': len(promedios),
+								'label': metrica
+							}
+				else:
+					st.warning(f"⚠️ Columnas de movilidad no encontradas: {col_der}, {col_izq}")
+		
+		# Generar gráfico de distribución grupal (reemplaza al radar)
+		if estadisticas_radar_grupal:
+			# Crear gráfico de distribución específico para MOVILIDAD
+			import plotly.graph_objects as go
+			from utils.ui_utils import get_base64_image
+			from config.settings import COLORES, ESCUDO_PATH
+			
+			# Extraer datos para el gráfico de MOVILIDAD
+			metricas = []
+			medias = []
+			minimos = []
+			maximos = []
+			
+			# Orden específico para MOVILIDAD
+			orden_metricas = ['AKE', 'THOMAS', 'LUNGE']
+			
+			for metrica in orden_metricas:
+				for metrica_key, stats in estadisticas_radar_grupal.items():
+					if stats['label'] == metrica:
+						metricas.append(metrica)
+						medias.append(stats['media'])
+						minimos.append(stats['minimo'])
+						maximos.append(stats['maximo'])
+						break
+			
+			# Crear el gráfico de barras con rangos para MOVILIDAD
+			fig_distribucion_grupal = go.Figure()
+			
+			# Barras principales (medias del grupo)
+			fig_distribucion_grupal.add_trace(go.Bar(
+				x=metricas,
+				y=medias,
+				name="Media del Grupo",
+				marker=dict(
+					color="rgba(220, 38, 38, 0.8)",
+					line=dict(color="rgba(220, 38, 38, 1)", width=2)
+				),
+				text=[f"{v:.0f}°" for v in medias],
+				textposition="outside",
+				textfont=dict(size=14, color="white", family="Roboto", weight="bold"),
+				hovertemplate='<b>%{x}</b><br>' +
+							  'Media: %{y:.1f}°<br>' +
+							  '<extra></extra>',
+				hoverlabel=dict(
+					bgcolor="rgba(220, 38, 38, 0.9)",
+					bordercolor="rgba(220, 38, 38, 1)",
+					font=dict(color="white", family="Roboto")
+				)
+			))
+			
+			# Agregar logo del club como marca de agua
+			try:
+				escudo_base64 = get_base64_image(ESCUDO_PATH)
+				fig_distribucion_grupal.add_layout_image(
+					dict(
+						source=f"data:image/png;base64,{escudo_base64}",
+						xref="paper", yref="paper",
+						x=0.95, y=0.05,
+						sizex=0.15, sizey=0.15,
+						xanchor="right", yanchor="bottom",
+						opacity=0.1,
+						layer="below"
+					)
+				)
+			except:
+				pass
+
+			fig_distribucion_grupal.update_layout(
+				title=dict(
+					text=f"Distribución Grupal – {categoria_display}<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Métricas de Movilidad – Medias del Grupo</span>",
+					font=dict(size=18, family="Source Sans Pro", weight=600, color="rgba(220, 38, 38, 1)"),
+					y=0.94,
+					x=0.5,
+					xanchor="center"
+				),
+				xaxis=dict(
+					title=dict(
+						text="Métrica", 
+						font=dict(size=14, family="Roboto"),
+						standoff=20
+					),
+					tickfont=dict(size=12, family="Roboto"),
+					showgrid=True,
+					gridwidth=1,
+					gridcolor="rgba(255,255,255,0.1)",
+					tickangle=0,
+					categoryorder="array",
+					categoryarray=metricas
+				),
+				yaxis=dict(
+					title=dict(
+						text="Movilidad (°)", 
+						font=dict(size=14, family="Roboto"),
+						standoff=15
+					),
+					tickfont=dict(size=12, family="Roboto"),
+					showgrid=True,
+					gridwidth=1,
+					gridcolor="rgba(255,255,255,0.1)",
+					zeroline=True,
+					zerolinewidth=2,
+					zerolinecolor="rgba(255,255,255,0.3)"
+				),
+				legend=dict(
+					orientation="h",
+					yanchor="bottom",
+					y=1.02,
+					xanchor="center",
+					x=0.5,
+					font=dict(size=12, family="Roboto"),
+					bgcolor="rgba(220, 38, 38, 0.2)",
+					bordercolor="rgba(220, 38, 38, 0.5)",
+					borderwidth=2
+				),
+				plot_bgcolor=COLORES['fondo_oscuro'],
+				paper_bgcolor=COLORES['fondo_oscuro'],
+				font=dict(color="white", family="Roboto"),
+				height=600,
+				margin=dict(t=140, b=60, l=60, r=60),
+				showlegend=True,
+				transition=dict(
+					duration=800,
+					easing="cubic-in-out"
+				),
+				hovermode="x unified",
+				hoverdistance=100,
+				spikedistance=1000
+			)
+			
+			distribucion_config = PLOTLY_CONFIG.copy()
+			distribucion_config['toImageButtonOptions'].update({
+				'filename': f'distribucion_grupal_movilidad_{categoria}',
+				'height': 600,
+				'width': 800
+			})
+			
+			st.plotly_chart(fig_distribucion_grupal, use_container_width=True, config=distribucion_config)
+			
+			# Información resumida debajo del gráfico de distribución
+			if estadisticas_radar_grupal:
+				# Crear métricas en columnas
+				metricas_info = []
+				orden_metricas = ['AKE', 'THOMAS', 'LUNGE']
+				
+				for metrica in orden_metricas:
+					for metrica_key, stats in estadisticas_radar_grupal.items():
+						if stats['label'] == metrica:
+							metricas_info.append((metrica, stats['media'], stats['minimo'], stats['maximo']))
+							break
+				
+				if metricas_info:
+					cols = st.columns(len(metricas_info))
+					
+					for i, (metrica, media, minimo, maximo) in enumerate(metricas_info):
+						with cols[i]:
+							# Color rojo para métricas grupales (igual al individual)
+							color = "#dc2626"  # Rojo
+							
+							st.markdown(f"""
+							<div style='text-align: center; padding: 12px; background: rgba(220, 38, 38, 0.15); 
+										border-radius: 8px; border-top: 3px solid {color};'>
+								<h5 style='margin: 0; color: white; font-size: 13px; font-weight: bold;'>{metrica}</h5>
+								<p style='margin: 8px 0; color: {color}; font-weight: bold; font-size: 20px;'>
+									{media:.0f}°
+								</p>
+								<p style='margin: 0; color: rgba(255,255,255,0.7); font-size: 11px;'>
+									Media Grupal
+								</p>
+							</div>
+							""", unsafe_allow_html=True)
+		
+		else:
+			# Fallback si no hay datos suficientes
+			st.warning("Datos insuficientes para análisis grupal. Se requieren al menos 3 jugadores en la categoría.")
+			
+			# Mostrar mensaje centrado
+			col1, col_center, col2 = st.columns([1, 2, 1])
+			with col_center:
+				st.info("Agregue más jugadores a la categoría para habilitar el análisis grupal.")
+
+		# === TABLA COMPARATIVA GRUPAL ===
+		st.markdown(f"#### Tabla - {categoria_display}")
+
+		# Columnas de movilidad que queremos analizar - IGUAL QUE INDIVIDUAL
+		columnas_tabla = {
+			"AKE DER": "AKE IZQ",
+			"THOMAS DER": "THOMAS IZQ",
+			"LUNGE DER": "LUNGE IZQ"
+		}
+		
+		# No hay métricas totales en movilidad
+		columnas_totales = []
+
+		# CALCULAR ESTADÍSTICAS GRUPALES PARA LA CATEGORÍA SELECCIONADA
+		estadisticas_grupales_tabla = calcular_estadisticas_completas_categoria(df_categoria, columnas_tabla, columnas_totales)
+		
+		# Obtener número de jugadores para los nombres de las filas
+		n_jugadores_categoria = estadisticas_grupales_tabla['n_jugadores']
+
+		# Ordenar columnas como pares
+		column_order = []
+		for der, izq in columnas_tabla.items():
+			column_order.extend([der, izq])
+
+		# Validar que todas las columnas existan en los diccionarios antes de crear DataFrame
+		columnas_validas = []
+		for col in column_order:
+			if col in estadisticas_grupales_tabla['media'] and col in estadisticas_grupales_tabla['std']:
+				columnas_validas.append(col)
+			else:
+				st.warning(f"⚠️ Columna '{col}' no encontrada en los datos grupales")
+
+		# Crear DataFrame comparativo grupal solo con columnas válidas
+		if columnas_validas:
+			df_comparativo_grupal = pd.DataFrame([
+				estadisticas_grupales_tabla['media'],
+				estadisticas_grupales_tabla['std']
+			])[columnas_validas]
+		else:
+			st.error("❌ No se encontraron columnas válidas para la tabla grupal")
+			return
+		
+		# Nombres para las filas grupales
+		df_comparativo_grupal.index = ["Media Grupal", "Desviación Estándar"]
+		
+		# Transponer tabla para mejor visualización
+		df_transpuesto_grupal = df_comparativo_grupal.T
+		df_transpuesto_grupal.index.name = "Métrica"
+		
+		# Mostrar tabla transpuesta con estilo optimizado para análisis grupal
+		st.dataframe(
+			df_transpuesto_grupal.style.format("{:.1f}").apply(
+				lambda x: [
+					'background-color: rgba(220, 38, 38, 0.15); font-weight: bold;',  # Columna media grupal
+					'background-color: rgba(31, 41, 55, 0.15);'    # Columna desv. est. grupal
+				], axis=1
+			).set_table_styles([
+				{'selector': 'th.col_heading', 'props': 'background-color: rgba(220, 38, 38, 0.3); color: white; font-weight: bold;'},
+				{'selector': 'th.row_heading', 'props': 'background-color: rgba(31, 41, 55, 0.8); color: white; font-weight: bold; text-align: left;'},
+				{'selector': 'td', 'props': 'text-align: center; padding: 8px;'}
+			]),
+			use_container_width=True
+		)
+		
+	else:
+		st.info("Selecciona al menos una métrica para visualizar el análisis grupal.")

@@ -2078,3 +2078,196 @@ def crear_radar_zscore_simple_movilidad(zscores_radar, jugador_nombre):
 	)
 	
 	return fig
+
+@st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando gráfico grupal de movilidad...")
+def crear_grafico_multimovilidad_grupal(estadisticas_grupales, metricas_seleccionadas, categoria):
+	"""Crea gráfico de multimovilidad GRUPAL con medias del grupo"""
+	
+	# Separar métricas bilaterales (no hay totales en movilidad)
+	metricas_bilaterales = []
+	barras_der, barras_izq, nombres_bilaterales = [], [], []
+	lsi_labels = {}
+
+	for metrica in metricas_seleccionadas:
+		if metrica in estadisticas_grupales:
+			# Todas las métricas de movilidad son bilaterales
+			val_der = estadisticas_grupales[metrica]['media_der']
+			val_izq = estadisticas_grupales[metrica]['media_izq']
+			barras_der.append(val_der)
+			barras_izq.append(val_izq)
+			nombres_bilaterales.append(metrica)
+			metricas_bilaterales.append(metrica)
+			
+			# Calcular LSI grupal para métricas bilaterales
+			if val_der > 0 and val_izq > 0:
+				lsi_val = (min(val_der, val_izq) / max(val_der, val_izq)) * 100
+				lsi_labels[metrica] = lsi_val
+
+	fig = go.Figure()
+
+	# Agregar trazas para métricas bilaterales
+	if nombres_bilaterales:
+		fig.add_trace(go.Bar(
+			x=nombres_bilaterales,
+			y=barras_der,
+			name="🔴 Derecho (Grupo)",
+			marker=dict(
+				color="rgba(220, 38, 38, 0.9)",  # Rojo igual al individual
+				pattern=dict(
+					shape="",
+					bgcolor="rgba(220, 38, 38, 0.3)",
+					fgcolor="rgba(220, 38, 38, 1)"
+				),
+				opacity=0.9
+			),
+			text=[f"{v:.0f}°" for v in barras_der],
+			textposition="outside",
+			textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
+			hovertemplate='<b>🔴 Derecho (Grupo)</b><br>%{x}: %{y:.0f}°<br><i>Media grupal</i><extra></extra>',
+			offsetgroup=1,
+			hoverlabel=dict(
+				bgcolor="rgba(220, 38, 38, 0.9)",
+				bordercolor="rgba(220, 38, 38, 1)",
+				font=dict(color="white", family="Roboto")
+			)
+		))
+
+		fig.add_trace(go.Bar(
+			x=nombres_bilaterales,
+			y=barras_izq,
+			name="⚫ Izquierdo (Grupo)",
+			marker=dict(
+				color="rgba(31, 41, 55, 0.9)",  # Negro igual al individual
+				pattern=dict(
+					shape="",
+					bgcolor="rgba(31, 41, 55, 0.3)",
+					fgcolor="rgba(31, 41, 55, 1)"
+				),
+				opacity=0.9
+			),
+			text=[f"{v:.0f}°" for v in barras_izq],
+			textposition="outside",
+			textfont=dict(size=13, color="white", family="Roboto", weight="bold"),
+			hovertemplate='<b>⚫ Izquierdo (Grupo)</b><br>%{x}: %{y:.0f}°<br><i>Media grupal</i><extra></extra>',
+			offsetgroup=2,
+			hoverlabel=dict(
+				bgcolor="rgba(31, 41, 55, 0.9)",
+				bordercolor="rgba(31, 41, 55, 1)",
+				font=dict(color="white", family="Roboto")
+			)
+		))
+
+	# LSI annotations - SOLO PARA MÉTRICAS BILATERALES GRUPALES
+	for i, name in enumerate(nombres_bilaterales):
+		lsi_val = lsi_labels.get(name)
+		
+		if lsi_val and lsi_val > 0:
+			# Determinar color según rango LSI
+			if 90 <= lsi_val <= 110:  # Zona óptima
+				lsi_color = COLORES['verde_optimo']
+				border_color = "rgba(50, 205, 50, 1)"
+			elif 80 <= lsi_val < 90 or 110 < lsi_val <= 120:  # Zona de alerta
+				lsi_color = COLORES['naranja_alerta']
+				border_color = "rgba(255, 165, 0, 1)"
+			else:  # Zona de riesgo
+				lsi_color = COLORES['rojo_riesgo']
+				border_color = "rgba(255, 69, 0, 1)"
+			
+			fig.add_annotation(
+				text=f"<b>LSI Grupal: {lsi_val:.1f}%</b>",
+				x=name,
+				y=max(barras_der[i], barras_izq[i]) * 1.55,
+				showarrow=False,
+				font=dict(size=11, color="white", family="Roboto", weight="bold"),
+				xanchor="center",
+				align="center",
+				bgcolor=lsi_color,
+				bordercolor=border_color,
+				borderwidth=2,
+				borderpad=8,
+				opacity=0.95
+			)
+	
+	# Agregar logo del club como marca de agua
+	try:
+		escudo_base64 = get_base64_image(ESCUDO_PATH)
+		fig.add_layout_image(
+			dict(
+				source=f"data:image/png;base64,{escudo_base64}",
+				xref="paper", yref="paper",
+				x=0.95, y=0.05,
+				sizex=0.15, sizey=0.15,
+				xanchor="right", yanchor="bottom",
+				opacity=0.1,
+				layer="below"
+			)
+		)
+	except:
+		pass
+
+	fig.update_layout(
+		barmode="group",
+		bargap=0.3,
+		bargroupgap=0.1,
+		title=dict(
+			text=f"Perfil Grupal – {categoria}<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Métricas de Movilidad – Medias Grupales</span>",
+			font=dict(size=18, family="Source Sans Pro", weight=600, color="rgba(220, 38, 38, 1)"),
+			y=0.94,
+			x=0.5,
+			xanchor="center"
+		),
+		xaxis=dict(
+			title=dict(
+				text="Métrica", 
+				font=dict(size=14, family="Roboto"),
+				standoff=20
+			),
+			tickfont=dict(size=12, family="Roboto"),
+			showgrid=True,
+			gridwidth=1,
+			gridcolor="rgba(255,255,255,0.1)",
+			tickangle=0,
+			categoryorder="array",
+			categoryarray=nombres_bilaterales
+		),
+		yaxis=dict(
+			title=dict(
+				text="Movilidad (°)", 
+				font=dict(size=14, family="Roboto"),
+				standoff=15
+			),
+			tickfont=dict(size=12, family="Roboto"),
+			showgrid=True,
+			gridwidth=1,
+			gridcolor="rgba(255,255,255,0.1)",
+			zeroline=True,
+			zerolinewidth=2,
+			zerolinecolor="rgba(255,255,255,0.3)"
+		),
+		legend=dict(
+			orientation="h",
+			yanchor="bottom",
+			y=1.02,
+			xanchor="center",
+			x=0.5,
+			font=dict(size=12, family="Roboto"),
+			bgcolor="rgba(220, 38, 38, 0.2)",
+			bordercolor="rgba(220, 38, 38, 0.5)",
+			borderwidth=2
+		),
+		plot_bgcolor=COLORES['fondo_oscuro'],
+		paper_bgcolor=COLORES['fondo_oscuro'],
+		font=dict(color="white", family="Roboto"),
+		height=650,
+		margin=dict(t=140, b=60, l=60, r=60),
+		showlegend=True,
+		transition=dict(
+			duration=800,
+			easing="cubic-in-out"
+		),
+		hovermode="x unified",
+		hoverdistance=100,
+		spikedistance=1000
+	)
+
+	return fig

@@ -102,9 +102,7 @@ def crear_sidebar(df):
 			except ModuleNotFoundError:
 				pdf_disponible = False
 
-			if not pdf_disponible:
-				st.info("La exportación a PDF está disponible solo en ejecución local.")
-			else:
+			if pdf_disponible:
 				if "pdf_bytes" not in st.session_state:
 					st.session_state.pdf_bytes = None
 

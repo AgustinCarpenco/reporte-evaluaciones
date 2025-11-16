@@ -6,7 +6,6 @@ import streamlit as st
 from utils.ui_utils import get_base64_image
 from utils.data_utils import obtener_jugadores_categoria, limpiar_cache_si_cambio
 from config.settings import ESCUDO_PATH
-from utils.pdf_report import construir_contexto_reporte_perfil, generar_pdf_reporte
 
 def crear_sidebar(df):
 	"""Crea la sidebar completa con todos sus componentes"""
@@ -93,29 +92,43 @@ def crear_sidebar(df):
 		st.markdown("---")
 
 		# Botón de exportación DIRECTO en la sidebar (mismo PDF para todos los tipos de análisis)
+		# Optimizado: solo generar el PDF cuando el usuario lo solicita explícitamente
 		exportar = False
 		if jugador and jugador != "Sin jugadores":
-			try:
-				# Obtener datos actualizados del jugador seleccionado
-				datos_jugador_export = df[(df["categoria"] == categoria) & (df["Deportista"] == jugador)].iloc[0]
-				# Extraer fecha desde la columna 'Fecha'
-				fecha_valor = datos_jugador_export.get("Fecha", "")
-				if hasattr(fecha_valor, "strftime"):
-					fecha_str = fecha_valor.strftime("%d/%m/%Y")
-				else:
-					fecha_str = str(fecha_valor)
+			if "pdf_bytes" not in st.session_state:
+				st.session_state.pdf_bytes = None
 
-				contexto = construir_contexto_reporte_perfil(
-					df=df,
-					datos_jugador=datos_jugador_export,
-					jugador=jugador,
-					categoria=categoria,
-					seccion=seccion,
-					vista=vista,
-					fecha=fecha_str,
-				)
-				pdf_bytes = generar_pdf_reporte(contexto)
+			if st.button("📄 Generar reporte en PDF"):
+				try:
+					from utils.pdf_report import construir_contexto_reporte_perfil, generar_pdf_reporte
 
+					# Obtener datos actualizados del jugador seleccionado
+					datos_jugador_export = df[(df["categoria"] == categoria) & (df["Deportista"] == jugador)].iloc[0]
+					# Extraer fecha desde la columna 'Fecha'
+					fecha_valor = datos_jugador_export.get("Fecha", "")
+					if hasattr(fecha_valor, "strftime"):
+						fecha_str = fecha_valor.strftime("%d/%m/%Y")
+					else:
+						fecha_str = str(fecha_valor)
+
+					contexto = construir_contexto_reporte_perfil(
+						df=df,
+						datos_jugador=datos_jugador_export,
+						jugador=jugador,
+						categoria=categoria,
+						seccion=seccion,
+						vista=vista,
+						fecha=fecha_str,
+					)
+					st.session_state.pdf_bytes = generar_pdf_reporte(contexto)
+					st.success("Reporte generado correctamente. Ahora puedes descargar el PDF.")
+					exportar = True
+				except Exception as e:
+					# Mostrar mensaje claro si no se puede generar el PDF (por ejemplo, sin datos de fuerza)
+					st.warning(str(e))
+
+			# Mostrar botón de descarga solo si ya existe un PDF generado en esta sesión
+			if st.session_state.pdf_bytes is not None:
 				# Nombre de archivo según tipo de análisis
 				if vista == "Perfil del Jugador":
 					sufijo_vista = "perfil"
@@ -127,14 +140,11 @@ def crear_sidebar(df):
 					sufijo_vista = "reporte"
 
 				st.download_button(
-					label="📄 Exportar reporte en PDF",
-					data=pdf_bytes,
+					label="⬇️ Descargar PDF",
+					data=st.session_state.pdf_bytes,
 					file_name=f"{jugador}_{seccion}_{sufijo_vista}.pdf",
 					mime="application/pdf",
 				)
 				exportar = True
-			except Exception as e:
-				# Mostrar mensaje claro si no se puede generar el PDF (por ejemplo, sin datos de fuerza)
-				st.warning(str(e))
 
-	return categoria, jugador, vista, seccion, exportar
+		return categoria, jugador, vista, seccion, exportar

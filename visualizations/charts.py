@@ -9,10 +9,10 @@ from config.settings import CACHE_TTL, COLORES, Z_SCORE_METRICAS, METRICAS_ZSCOR
 from utils.ui_utils import get_base64_image
 
 @st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando gráfico de fuerza...")
-def crear_grafico_multifuerza(datos_jugador_hash, metricas_seleccionadas, metricas_columnas):
+def crear_grafico_multifuerza(datos_jugador_dict, metricas_seleccionadas, metricas_columnas):
 	"""Crea gráfico de multifuerza con cache optimizado"""
-	# Reconstruir datos del jugador desde hash
-	datos_jugador = datos_jugador_hash
+	# Usar directamente el dict de datos del jugador
+	datos_jugador = datos_jugador_dict
 	
 	# Separar métricas bilaterales y totales
 	metricas_bilaterales = []
@@ -243,10 +243,10 @@ def crear_grafico_multifuerza(datos_jugador_hash, metricas_seleccionadas, metric
 
 
 @st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando gráfico comparativo de movilidad...")
-def crear_grafico_multimovilidad_comparativo(datos_jugador_hash, estadisticas_grupales, metricas_seleccionadas, metricas_columnas, jugador_nombre):
+def crear_grafico_multimovilidad_comparativo(datos_jugador_dict, estadisticas_grupales, metricas_seleccionadas, metricas_columnas, jugador_nombre):
 	"""Crea gráfico de multimovilidad COMPARATIVO (Jugador vs Grupo superpuesto)"""
-	# Reconstruir datos del jugador desde hash
-	datos_jugador = datos_jugador_hash
+	# Usar directamente el dict de datos del jugador
+	datos_jugador = datos_jugador_dict
 
 	# Datos del JUGADOR
 	barras_der_jugador, barras_izq_jugador, nombres_bilaterales = [], [], []
@@ -687,10 +687,10 @@ def crear_radar_zscore_automatico(zscores_jugador, jugador_nombre):
 
 # Mantener función legacy para compatibilidad
 @st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando radar Z-Score...")
-def crear_radar_zscore(datos_jugador_hash, jugador_nombre):
+def crear_radar_zscore(datos_jugador_dict, jugador_nombre):
 	"""Función legacy - mantener para compatibilidad con Z-Scores existentes en Excel"""
-	# Reconstruir datos del jugador desde hash
-	datos_jugador = datos_jugador_hash
+	# Usar directamente el dict de datos del jugador
+	datos_jugador = datos_jugador_dict
 	
 	# Definir las métricas Z-Score y sus etiquetas
 	z_score_metricas = Z_SCORE_METRICAS
@@ -1479,10 +1479,10 @@ def crear_grafico_distribucion_grupal(estadisticas_radar_grupal, categoria_displ
 	return fig
 
 @st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando gráfico comparativo...")
-def crear_grafico_multifuerza_comparativo(datos_jugador_hash, estadisticas_grupales, metricas_seleccionadas, metricas_columnas, jugador_nombre):
+def crear_grafico_multifuerza_comparativo(datos_jugador_dict, estadisticas_grupales, metricas_seleccionadas, metricas_columnas, jugador_nombre):
 	"""Crea gráfico de multifuerza COMPARATIVO (Jugador vs Grupo superpuesto)"""
-	# Reconstruir datos del jugador desde hash
-	datos_jugador = datos_jugador_hash
+	# Usar directamente el dict de datos del jugador
+	datos_jugador = datos_jugador_dict
 	
 	# Separar métricas bilaterales y totales
 	metricas_bilaterales = []
@@ -1987,10 +1987,10 @@ def crear_radar_zscore_comparativo(zscores_jugador, datos_grupo_radar, jugador_n
 # ========= FUNCIONES DE MOVILIDAD =========
 
 @st.cache_data(ttl=CACHE_TTL['graficos'], show_spinner="Generando gráfico de movilidad...")
-def crear_grafico_multimovilidad(datos_jugador_hash, metricas_seleccionadas, metricas_columnas):
+def crear_grafico_multimovilidad(datos_jugador_dict, metricas_seleccionadas, metricas_columnas):
 	"""Crea gráfico de multimovilidad con cache optimizado - EXACTAMENTE IGUAL A FUERZA"""
-	# Reconstruir datos del jugador desde hash
-	datos_jugador = datos_jugador_hash
+	# Usar directamente el dict de datos del jugador
+	datos_jugador = datos_jugador_dict
 	
 	# Solo métricas bilaterales en movilidad (no hay totales)
 	barras_der, barras_izq, nombres_bilaterales = [], [], []

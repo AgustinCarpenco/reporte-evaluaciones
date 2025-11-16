@@ -11,7 +11,11 @@ from utils.ui_utils import inicializar_session_state, aplicar_estilos_css, crear
 from utils.data_utils import cargar_datos_optimizado
 from components.sidebar import crear_sidebar
 from modules.fuerza_analysis import analizar_fuerza, analizar_fuerza_grupal, analizar_fuerza_comparativo
-from modules.movilidad_analysis import analizar_movilidad, analizar_movilidad_grupal
+from modules.movilidad_analysis import (
+	analizar_movilidad,
+	analizar_movilidad_grupal,
+	analizar_movilidad_comparativo,
+)
 
 # ========= CONFIGURACIÓN DE PÁGINA ==========
 st.set_page_config(
@@ -104,11 +108,10 @@ def main():
 		# Análisis por sección
 		if seccion == "Fuerza":
 			analizar_fuerza_comparativo(df, datos_jugador, jugador, categoria)
-			
+		
 		elif seccion == "Movilidad":
-			st.markdown("### 🔧 Módulo en Desarrollo")
-			st.info("La comparación de movilidad estará disponible próximamente.")
-			
+			analizar_movilidad_comparativo(df, datos_jugador, jugador, categoria)
+		
 		elif seccion == "Funcionalidad":
 			st.markdown("### 🔧 Módulo en Desarrollo") 
 			st.info("La comparación de funcionalidad estará disponible próximamente.")

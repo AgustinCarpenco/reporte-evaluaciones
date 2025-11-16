@@ -4,7 +4,12 @@ Módulo de análisis de movilidad
 
 import streamlit as st
 import pandas as pd
-from visualizations.charts import crear_grafico_multimovilidad, crear_radar_zscore_simple_movilidad
+from visualizations.charts import (
+	crear_grafico_multimovilidad,
+	crear_radar_zscore_simple_movilidad,
+	crear_grafico_multimovilidad_comparativo,
+	crear_radar_zscore_comparativo,
+)
 from utils.data_utils import (
 	procesar_datos_categoria, calcular_estadisticas_categoria, preparar_datos_jugador,
 	calcular_zscores_automaticos, generar_zscores_jugador, calcular_zscores_radar_simple, generar_zscores_radar_simple,
@@ -589,3 +594,213 @@ def analizar_movilidad_grupal(df, categoria):
 		
 	else:
 		st.info("Selecciona al menos una métrica para visualizar el análisis grupal.")
+
+
+def analizar_movilidad_comparativo(df, datos_jugador, jugador, categoria):
+	"""Realiza el análisis COMPARATIVO de movilidad (Jugador vs Grupo)"""
+
+	# === Selección de métricas de movilidad ===
+	metricas_disponibles = ["AKE", "THOMAS", "LUNGE"]
+	metricas_display = ["AKE", "THOMAS", "LUNGE"]
+	metricas_columnas = {
+		"AKE": ("AKE DER", "AKE IZQ"),
+		"THOMAS": ("THOMAS DER", "THOMAS IZQ"),
+		"LUNGE": ("LUNGE DER", "LUNGE IZQ"),
+	}
+
+	metricas_seleccionadas_display = st.multiselect(
+		"Selección de Métricas - Selecciona las evaluaciones para la comparación:",
+		metricas_disponibles,
+		default=["AKE", "THOMAS", "LUNGE"],
+	)
+
+	# Convertir de display a nombres reales
+	metricas_seleccionadas = []
+	for metrica_display in metricas_seleccionadas_display:
+		for i, display in enumerate(metricas_disponibles):
+			if metrica_display == display:
+				metricas_seleccionadas.append(metricas_display[i])
+
+	if metricas_seleccionadas:
+		# Espaciado entre selector y gráfico
+		st.markdown("<br>", unsafe_allow_html=True)
+
+		# === GRÁFICO DE BARRAS COMPARATIVO ===
+		# Optimización con cache - crear hash del jugador
+		datos_jugador_dict = datos_jugador.to_dict() if hasattr(datos_jugador, "to_dict") else dict(datos_jugador)
+
+		# Calcular estadísticas grupales para comparación (misma categoría seleccionada)
+		with st.spinner("Calculando estadísticas grupales para comparación de movilidad..."):
+			df_categoria = procesar_datos_categoria(df, categoria)
+
+			# Formato esperado por calcular_estadisticas_completas_categoria: {"AKE DER": "AKE IZQ", ...}
+			columnas_tabla = {}
+			for metrica, (col_der, col_izq) in metricas_columnas.items():
+				columnas_tabla[col_der] = col_izq
+
+			# En movilidad no hay métricas totales
+			columnas_totales = []
+			estadisticas_grupales = calcular_estadisticas_completas_categoria(
+				df_categoria,
+				columnas_tabla,
+				columnas_totales,
+			)
+
+		# Generar gráfico comparativo con cache optimizado
+		fig_multimovilidad_comparativo = crear_grafico_multimovilidad_comparativo(
+			datos_jugador_dict,
+			estadisticas_grupales,
+			tuple(metricas_seleccionadas),
+			metricas_columnas,
+			jugador,
+		)
+
+		# Mostrar gráfico con animación
+		st.markdown(
+			"""
+		<div style="animation: fadeInUp 0.8s ease-out;">
+		""",
+			unsafe_allow_html=True,
+		)
+
+		st.plotly_chart(
+			fig_multimovilidad_comparativo,
+			use_container_width=True,
+			config=PLOTLY_CONFIG,
+		)
+
+		st.markdown("</div>", unsafe_allow_html=True)
+
+		# === RADAR Z-SCORE COMPARATIVO ===
+		st.markdown("<br><br>", unsafe_allow_html=True)
+
+		# Header para el radar comparativo (idéntico al de fuerza)
+		st.markdown(
+			f"""
+		<div style='background: linear-gradient(90deg, rgba(220, 38, 38, 0.8), rgba(17, 24, 39, 0.8));
+					border-left: 4px solid rgba(220, 38, 38, 1); padding: 15px; border-radius: 8px;'>
+			<h4 style='margin: 0; color: white; font-family: "Source Sans Pro", sans-serif; font-weight: 600; font-size: 1.5rem; line-height: 1.2; padding: 0.75rem 0 1rem;'>
+				Radar Comparativo Z-Score
+			</h4>
+		</div>
+		""",
+			unsafe_allow_html=True,
+		)
+
+		# Espaciado para mejorar el estilo visual
+		st.markdown("<br>", unsafe_allow_html=True)
+
+		# Calcular estadísticas poblacionales para radar de MOVILIDAD
+		with st.spinner("Calculando estadísticas para radar de movilidad..."):
+			df_categoria = procesar_datos_categoria(df, categoria)
+			estadisticas_radar = calcular_zscores_radar_simple(
+				df_categoria, METRICAS_ZSCORE_MOVILIDAD
+			)
+
+		# Generar Z-Scores simplificados del jugador (MISMO RADAR QUE EN PERFIL DEL JUGADOR)
+		if estadisticas_radar:
+			zscores_radar = generar_zscores_radar_simple(
+				datos_jugador, estadisticas_radar, METRICAS_ZSCORE_MOVILIDAD
+			)
+			
+			fig_radar_simple = crear_radar_zscore_simple_movilidad(zscores_radar, jugador)
+			
+			radar_config = PLOTLY_CONFIG.copy()
+			radar_config["toImageButtonOptions"].update(
+				{
+					"filename": f"radar_simple_movilidad_comparativo_{jugador}_{categoria}",
+					"height": 600,
+					"width": 800,
+				}
+			)
+			
+			st.plotly_chart(fig_radar_simple, use_container_width=True, config=radar_config)
+		else:
+			st.warning(
+				"Datos insuficientes para Z-Scores de movilidad en el radar. Se requieren al menos 3 jugadores en la categoría."
+			)
+
+		# === TABLA COMPARATIVA ===
+		st.markdown("<br><br>", unsafe_allow_html=True)
+
+		# Header para la tabla comparativa (idéntico al de fuerza)
+		st.markdown(
+			f"""
+		<div style='background: linear-gradient(90deg, rgba(220, 38, 38, 0.8), rgba(17, 24, 39, 0.8));
+					border-left: 4px solid rgba(220, 38, 38, 1); padding: 15px; border-radius: 8px;'>
+				<h4 style='margin: 0; color: white; font-family: "Source Sans Pro", sans-serif; font-weight: 600; font-size: 1.5rem; line-height: 1.2; padding: 0.75rem 0 1rem;'>
+					Tabla Comparativa - {jugador} vs {categoria}
+				</h4>
+			</div>
+		""",
+			unsafe_allow_html=True,
+		)
+
+		st.markdown("<br>", unsafe_allow_html=True)
+
+		# Crear tabla comparativa de movilidad (solo métricas bilaterales)
+		tabla_comparativa = {}
+
+		for metrica in metricas_seleccionadas:
+			col_der, col_izq = metricas_columnas[metrica]
+			if (
+				col_der in estadisticas_grupales["media"]
+				and col_izq in estadisticas_grupales["media"]
+			):
+				val_der_jugador = datos_jugador.get(col_der, 0)
+				val_izq_jugador = datos_jugador.get(col_izq, 0)
+				promedio_jugador = (val_der_jugador + val_izq_jugador) / 2
+
+				val_der_grupo = estadisticas_grupales["media"][col_der]
+				val_izq_grupo = estadisticas_grupales["media"][col_izq]
+				promedio_grupo = (val_der_grupo + val_izq_grupo) / 2
+
+				diferencia = promedio_jugador - promedio_grupo
+				porcentaje = (
+					(promedio_jugador / promedio_grupo) * 100 - 100
+					if promedio_grupo > 0
+					else 0
+				)
+
+				tabla_comparativa[metrica] = {
+					f"{jugador}": f"{promedio_jugador:.1f}°",
+					f"Media {categoria}": f"{promedio_grupo:.1f}°",
+					"Diferencia": f"{diferencia:+.1f}°",
+					"% vs Grupo": f"{porcentaje:+.1f}%",
+				}
+
+		# Convertir a DataFrame (mismas columnas que fuerza: jugador, grupo, diferencia, %)
+		if tabla_comparativa:
+			df_comparativo = pd.DataFrame(tabla_comparativa).T
+		
+			st.dataframe(
+				df_comparativo.style.apply(
+					lambda x: [
+						"background-color: rgba(220, 38, 38, 0.15); font-weight: bold;",  # Columna jugador
+						"background-color: rgba(59, 130, 246, 0.15);",                   # Columna grupo
+						"background-color: rgba(31, 41, 55, 0.15);",                     # Diferencia
+						"background-color: rgba(255, 193, 7, 0.15);",                    # % vs grupo
+					],
+					axis=1,
+					).set_table_styles([
+						{
+							"selector": "th.col_heading",
+							"props": "background-color: rgba(220, 38, 38, 0.3); color: white; font-weight: bold;",
+						},
+						{
+							"selector": "th.row_heading",
+							"props": "background-color: rgba(31, 41, 55, 0.8); color: white; font-weight: bold; text-align: left;",
+						},
+						{
+							"selector": "td",
+							"props": "text-align: center; padding: 8px;",
+						},
+					]),
+				use_container_width=True,
+			)
+		else:
+			st.info(
+				"No se pudo generar la tabla comparativa de movilidad. Verificar datos disponibles."
+			)
+	else:
+		st.info("Selecciona al menos una métrica para visualizar la comparación de movilidad.")

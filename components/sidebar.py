@@ -95,56 +95,66 @@ def crear_sidebar(df):
 		# Optimizado: solo generar el PDF cuando el usuario lo solicita explícitamente
 		exportar = False
 		if jugador and jugador != "Sin jugadores":
-			if "pdf_bytes" not in st.session_state:
-				st.session_state.pdf_bytes = None
+			# Detectar si la librería de PDF (weasyprint) está disponible.
+			try:
+				import weasyprint  # type: ignore  # Solo para detección de entorno
+				pdf_disponible = True
+			except ModuleNotFoundError:
+				pdf_disponible = False
 
-			if st.button("📄 Generar reporte en PDF"):
-				try:
-					from utils.pdf_report import construir_contexto_reporte_perfil, generar_pdf_reporte
+			if not pdf_disponible:
+				st.info("La exportación a PDF está disponible solo en ejecución local.")
+			else:
+				if "pdf_bytes" not in st.session_state:
+					st.session_state.pdf_bytes = None
 
-					# Obtener datos actualizados del jugador seleccionado
-					datos_jugador_export = df[(df["categoria"] == categoria) & (df["Deportista"] == jugador)].iloc[0]
-					# Extraer fecha desde la columna 'Fecha'
-					fecha_valor = datos_jugador_export.get("Fecha", "")
-					if hasattr(fecha_valor, "strftime"):
-						fecha_str = fecha_valor.strftime("%d/%m/%Y")
+				if st.button("📄 Generar reporte en PDF"):
+					try:
+						from utils.pdf_report import construir_contexto_reporte_perfil, generar_pdf_reporte
+
+						# Obtener datos actualizados del jugador seleccionado
+						datos_jugador_export = df[(df["categoria"] == categoria) & (df["Deportista"] == jugador)].iloc[0]
+						# Extraer fecha desde la columna 'Fecha'
+						fecha_valor = datos_jugador_export.get("Fecha", "")
+						if hasattr(fecha_valor, "strftime"):
+							fecha_str = fecha_valor.strftime("%d/%m/%Y")
+						else:
+							fecha_str = str(fecha_valor)
+
+						contexto = construir_contexto_reporte_perfil(
+							df=df,
+							datos_jugador=datos_jugador_export,
+							jugador=jugador,
+							categoria=categoria,
+							seccion=seccion,
+							vista=vista,
+							fecha=fecha_str,
+						)
+						st.session_state.pdf_bytes = generar_pdf_reporte(contexto)
+						st.success("Reporte generado correctamente. Ahora puedes descargar el PDF.")
+						exportar = True
+					except Exception as e:
+						# Mostrar mensaje claro si no se puede generar el PDF (por ejemplo, sin datos de fuerza)
+						st.warning(str(e))
+
+				# Mostrar botón de descarga solo si ya existe un PDF generado en esta sesión
+				if st.session_state.pdf_bytes is not None:
+					# Nombre de archivo según tipo de análisis
+					if vista == "Perfil del Jugador":
+						sufijo_vista = "perfil"
+					elif vista == "Perfil del Grupo":
+						sufijo_vista = "grupo"
+					elif vista == "Comparación Jugador vs Grupo":
+						sufijo_vista = "comparacion"
 					else:
-						fecha_str = str(fecha_valor)
+						sufijo_vista = "reporte"
 
-					contexto = construir_contexto_reporte_perfil(
-						df=df,
-						datos_jugador=datos_jugador_export,
-						jugador=jugador,
-						categoria=categoria,
-						seccion=seccion,
-						vista=vista,
-						fecha=fecha_str,
+					st.download_button(
+						label="⬇️ Descargar PDF",
+						data=st.session_state.pdf_bytes,
+						file_name=f"{jugador}_{seccion}_{sufijo_vista}.pdf",
+						mime="application/pdf",
 					)
-					st.session_state.pdf_bytes = generar_pdf_reporte(contexto)
-					st.success("Reporte generado correctamente. Ahora puedes descargar el PDF.")
 					exportar = True
-				except Exception as e:
-					# Mostrar mensaje claro si no se puede generar el PDF (por ejemplo, sin datos de fuerza)
-					st.warning(str(e))
-
-			# Mostrar botón de descarga solo si ya existe un PDF generado en esta sesión
-			if st.session_state.pdf_bytes is not None:
-				# Nombre de archivo según tipo de análisis
-				if vista == "Perfil del Jugador":
-					sufijo_vista = "perfil"
-				elif vista == "Perfil del Grupo":
-					sufijo_vista = "grupo"
-				elif vista == "Comparación Jugador vs Grupo":
-					sufijo_vista = "comparacion"
-				else:
-					sufijo_vista = "reporte"
-
-				st.download_button(
-					label="⬇️ Descargar PDF",
-					data=st.session_state.pdf_bytes,
-					file_name=f"{jugador}_{seccion}_{sufijo_vista}.pdf",
-					mime="application/pdf",
-				)
-				exportar = True
 
 		return categoria, jugador, vista, seccion, exportar

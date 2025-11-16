@@ -119,9 +119,18 @@ def generar_pdf_reporte(contexto: ReporteJugadorContexto, plantilla: str = "repo
 
 def _fig_to_data_uri(fig) -> str:
 
-    img_bytes = fig.to_image(format="png")
-    b64 = base64.b64encode(img_bytes).decode("ascii")
-    return f"data:image/png;base64,{b64}"
+	try:
+		img_bytes = fig.to_image(format="png")
+	except Exception as e:
+		# En entornos como Streamlit Cloud, Kaleido o sus dependencias (Chrome) pueden no estar disponibles.
+		# En ese caso, dejamos claro que la exportación a PDF no está soportada en ese entorno.
+		raise RuntimeError(
+			"La exportación de gráficos a imagen requiere 'kaleido' y sus dependencias (por ejemplo, Chrome). "
+			"En este entorno no están disponibles, por lo que la generación de PDF solo está soportada en ejecución local."
+		) from e
+
+	b64 = base64.b64encode(img_bytes).decode("ascii")
+	return f"data:image/png;base64,{b64}"
 
 
 def construir_contexto_reporte_perfil(

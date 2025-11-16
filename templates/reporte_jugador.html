@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+	<meta charset="UTF-8" />
+	<title>Informe de Evaluación Física - {{ nombre_jugador }}</title>
+	<style>
+		@page {
+			size: A4;
+			margin: 1.8cm;
+		}
+
+		body {
+			font-family: "Source Sans Pro", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif;
+			font-size: 11px;
+			color: #111827;
+			background-color: #ffffff;
+		}
+
+		h1,
+		h2,
+		h3 {
+			margin: 0;
+			padding: 0;
+		}
+
+		h1 {
+			font-size: 26px;
+			letter-spacing: 0.03em;
+			font-weight: 600;
+			color: #ffffff;
+		}
+
+		h2 {
+			font-size: 16px;
+			font-weight: 600;
+			color: #dc2626;
+		}
+
+		h3 {
+			font-size: 12px;
+			font-weight: 600;
+			color: #e5e7eb;
+		}
+
+		/* ===== CABECERA ===== */
+
+		.header {
+			margin: -1.2cm -1.8cm 1.2rem -1.8cm;
+			padding: 1.0rem 1.8cm 0.9rem 1.8cm;
+			background: linear-gradient(90deg, #dc2626, #7f1d1d);
+			color: #ffffff;
+		}
+
+		.header-top {
+			width: 100%;
+			text-align: center;
+		}
+
+		.header-title-block {
+			display: inline-block;
+			margin-bottom: 0.4rem;
+			text-align: center;
+		}
+
+		.subtitle {
+			font-size: 12px;
+			color: rgba(255, 255, 255, 0.9);
+			margin-top: 0.1rem;
+		}
+
+		.generated {
+			font-size: 10px;
+			color: rgba(255, 255, 255, 0.85);
+			text-align: right;
+		}
+
+		/* ===== PANEL DE INFORMACIÓN DEL JUGADOR ===== */
+
+		.info-panel {
+			margin-top: 0.7rem;
+			padding: 0.7rem 0.9rem;
+			border-radius: 6px;
+			background-color: #1e293b;
+			border: 1px solid #111827;
+		}
+
+		.info-grid {
+			display: table;
+			width: 100%;
+		}
+
+		.info-row {
+			display: table-row;
+		}
+
+		.info-label,
+		.info-value {
+			display: table-cell;
+			padding: 2px 4px;
+			vertical-align: middle;
+		}
+
+		.info-label {
+			font-weight: 600;
+			color: #f9fafb;
+			width: 20%;
+			white-space: nowrap;
+		}
+
+		.info-value {
+			color: #f9fafb;
+		}
+
+		/* ===== SECCIONES PRINCIPALES ===== */
+
+		.section {
+			margin-top: 1.2rem;
+		}
+
+		.section-title {
+			padding-bottom: 0.3rem;
+			border-bottom: 1px solid #374151;
+			margin-bottom: 0.6rem;
+		}
+
+		/* ===== CONTENEDOR DE GRÁFICOS ===== */
+
+		.charts-container {
+			margin-top: 0;
+		}
+
+		.chart {
+			margin-bottom: 0.9rem;
+			padding: 0.5rem;
+			border-radius: 8px;
+			background-color: #111827;
+			border: 1px solid #1f2937;
+		}
+
+		.chart h3 {
+			text-align: left;
+			margin-bottom: 0.35rem;
+			color: #e5e7eb;
+		}
+
+		.chart img {
+			display: block;
+			max-width: 100%;
+			height: auto;
+			margin: 0 auto;
+			border-radius: 6px;
+			border: 1px solid #1f2937;
+		}
+
+		/* ===== TABLAS ===== */
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-top: 0.3rem;
+		}
+
+		/* apuntamos a las tablas que generamos desde pandas: clase tabla-metrica */
+		table.tabla-metrica {
+			background-color: #ffffff;
+		}
+
+		table.tabla-metrica thead tr th {
+			background-color: #dc2626;
+			color: #f9fafb;
+			font-weight: 600;
+			font-size: 10px;
+			border: 1px solid #7f1d1d;
+		}
+
+		table.tabla-metrica tbody tr td {
+			font-size: 10px;
+			color: #111827;
+			border: 1px solid #9ca3af;
+			padding: 4px 6px;
+		}
+
+		table.tabla-metrica tbody tr:nth-child(odd) td {
+			background-color: #f9fafb;
+		}
+
+		table.tabla-metrica tbody tr:nth-child(even) td {
+			background-color: #ffffff;
+		}
+
+		/* alineación: primera columna (métrica) a la izquierda, resto numérico a la derecha */
+		table.tabla-metrica tbody tr td:first-child,
+		table.tabla-metrica thead tr th:first-child {
+			text-align: left;
+			color: #f9fafb !important;
+			background-color: #111827 !important;
+			font-weight: 600;
+		}
+
+		table.tabla-metrica tbody tr td:not(:first-child),
+		table.tabla-metrica thead tr th:not(:first-child) {
+			text-align: right;
+		}
+
+		/* contenedor de cada tabla, para evitar cortes feos */
+		.table-block {
+			page-break-inside: avoid;
+			margin-bottom: 0.9rem;
+			padding: 0.4rem 0.5rem 0.2rem 0.5rem;
+			border-radius: 8px;
+			background-color: #ffffff;
+			border: 1px solid #9ca3af;
+		}
+
+		.table-block h3 {
+			margin-bottom: 0.3rem;
+			color: #e5e7eb;
+		}
+	</style>
+</head>
+
+<body>
+	<header class="header">
+		<div class="header-top">
+			<div class="header-title-block">
+				<h1>Informe de Evaluación Física</h1>
+			</div>
+		</div>
+
+		<div class="info-panel">
+			<div class="info-grid">
+				<div class="info-row">
+					<div class="info-label">Jugador</div>
+					<div class="info-value">{{ nombre_jugador }}</div>
+				</div>
+				<div class="info-row">
+					<div class="info-label">Categoría</div>
+					<div class="info-value">
+						{% if categoria == 'Evaluacion_2910' %}
+							Primer Equipo
+						{% else %}
+							{{ categoria }}
+						{% endif %}
+					</div>
+				</div>
+				<div class="info-row">
+					<div class="info-label">Perfil</div>
+					<div class="info-value">Perfil del Jugador – {{ seccion }}</div>
+				</div>
+			</div>
+		</div>
+	</header>
+
+	<section class="section">
+		<div class="section-title">
+			<h2>Resultados gráficos</h2>
+		</div>
+		<div class="charts-container">
+			{% for grafico in graficos_paths %}
+			<div class="chart">
+				<h3>Gráfico {{ loop.index }}</h3>
+				<img src="{{ grafico }}" alt="Gráfico {{ loop.index }}" />
+			</div>
+			{% endfor %}
+		</div>
+	</section>
+
+	<section class="section">
+		<div class="section-title">
+			<h2>Tablas de métricas</h2>
+		</div>
+		{% for tabla in tablas_html %}
+		<div class="table-block">
+			{{ tabla | safe }}
+		</div>
+		{% endfor %}
+	</section>
+</body>
+
+</html>

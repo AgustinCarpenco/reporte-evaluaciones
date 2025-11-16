@@ -86,23 +86,10 @@ def crear_sidebar(df):
 		
 		seccion = st.radio(
 			"Evaluación", 
-			["Fuerza", "Movilidad", "Funcionalidad"]
+			["Fuerza", "Movilidad"]
 		)
 
 		st.markdown("---")
-		
-		# Información del staff
-		st.markdown("""
-		<div style='background: rgba(220, 38, 38, 0.1); padding: 10px; border-radius: 8px; border-left: 4px solid rgba(220, 38, 38, 1);'>
-			<p style='margin: 0; font-size: 12px; color: rgba(255,255,255,0.7);'>
-				<strong>Staff Técnico</strong><br>
-				Evaluación: 1ra Fase<br>
-				Análisis
-			</p>
-		</div>
-		""", unsafe_allow_html=True)
-		
-		st.markdown("<br>", unsafe_allow_html=True)
 		exportar = st.button("Exportar Reporte", help="Descargar análisis en PDF")
 
 	return categoria, jugador, vista, seccion, exportar

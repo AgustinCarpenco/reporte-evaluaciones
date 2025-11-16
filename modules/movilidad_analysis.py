@@ -17,6 +17,167 @@ from utils.data_utils import (
 )
 from config.settings import PLOTLY_CONFIG, METRICAS_ZSCORE_MOVILIDAD
 
+
+def obtener_componentes_perfil_movilidad(df, datos_jugador, jugador, categoria, metricas_seleccionadas=None):
+	"""Obtiene figuras y tablas del perfil de movilidad SIN usar Streamlit.
+
+	Devuelve los mismos elementos conceptuales que se muestran en `analizar_movilidad`:
+	- Gráfico multimovilidad
+	- Radar Z-Score simplificado de movilidad
+	- Tabla resumen de Z-Scores de movilidad
+	- Tabla comparativa jugador vs grupo (movilidad)
+
+	Parameters
+	----------
+	df : pd.DataFrame
+		DataFrame completo con todos los jugadores.
+	datos_jugador : pd.Series o dict
+		Fila correspondiente al jugador seleccionado.
+	jugador : str
+		Nombre del jugador.
+	categoria : str
+		Categoría del jugador.
+	metricas_seleccionadas : list[str] | None
+		Lista de métricas de movilidad seleccionadas ("AKE", "THOMAS", "LUNGE"). Si es None se usan las
+		mismas por defecto que en la vista de Streamlit.
+
+	Returns
+	-------
+	dict
+		{
+			"figuras": [fig_multimovilidad, fig_radar_simple],
+			"tablas": {
+				"zscores": df_zscores,
+				"comparativa": df_transpuesto
+			}
+		}
+	"""
+
+	# === Configuración de métricas (igual que en analizar_movilidad) ===
+	metricas_disponibles = ["AKE", "THOMAS", "LUNGE"]
+	metricas_columnas = {
+		"AKE": ("AKE DER", "AKE IZQ"),
+		"THOMAS": ("THOMAS DER", "THOMAS IZQ"),
+		"LUNGE": ("LUNGE DER", "LUNGE IZQ"),
+	}
+
+	if metricas_seleccionadas is None:
+		metricas_seleccionadas = ["AKE", "THOMAS", "LUNGE"]
+
+	# === FIGURA: Gráfico multimovilidad ===
+	datos_jugador_dict = datos_jugador.to_dict() if hasattr(datos_jugador, "to_dict") else dict(datos_jugador)
+	fig_multimovilidad = crear_grafico_multimovilidad(
+		datos_jugador_dict,
+		tuple(metricas_seleccionadas),
+		metricas_columnas,
+	)
+
+	# === RADAR Z-SCORE SIMPLIFICADO MOVILIDAD ===
+	df_categoria = procesar_datos_categoria(df, categoria)
+	estadisticas_radar = calcular_zscores_radar_simple(df_categoria, METRICAS_ZSCORE_MOVILIDAD)
+	fig_radar_simple = None
+	df_zscores = pd.DataFrame()
+
+	if estadisticas_radar:
+		zscores_radar = generar_zscores_radar_simple(
+			datos_jugador,
+			estadisticas_radar,
+			METRICAS_ZSCORE_MOVILIDAD,
+		)
+
+		# Crear figura de radar de movilidad
+		fig_radar_simple = crear_radar_zscore_simple_movilidad(zscores_radar, jugador)
+
+		# Construir tabla resumen de Z-Scores de movilidad
+		filas = []
+		for metrica, data in zscores_radar.items():
+			zscore = data["zscore"]
+			valor = data["valor_original"]
+
+			if zscore >= 1.0:
+				categoria_nivel = "Superior"
+			elif zscore >= 0.0:
+				categoria_nivel = "Promedio+"
+			elif zscore >= -1.0:
+				categoria_nivel = "Promedio-"
+			else:
+				categoria_nivel = "Inferior"
+
+			filas.append(
+				{
+					"Métrica": metrica,
+					"Z-Score": zscore,
+					"Valor": valor,
+					"Categoría": categoria_nivel,
+				}
+			)
+
+		if filas:
+			df_zscores = pd.DataFrame(filas).set_index("Métrica")
+
+	# === TABLA COMPARATIVA JUGADOR VS GRUPO (MOVILIDAD) ===
+	columnas_tabla = {
+		"AKE DER": "AKE IZQ",
+		"THOMAS DER": "THOMAS IZQ",
+		"LUNGE DER": "LUNGE IZQ",
+	}
+	columnas_totales = []  # No hay totales en movilidad
+
+	categorias_disponibles = df["categoria"].value_counts()
+	categoria_base = categorias_disponibles.index[0]
+	df_categoria_base = procesar_datos_categoria(df, categoria_base)
+	estadisticas_grupales = calcular_estadisticas_completas_categoria(
+		df_categoria_base,
+		columnas_tabla,
+		columnas_totales,
+	)
+
+	jugador_dict = preparar_datos_jugador_completo(
+		datos_jugador_dict,
+		columnas_tabla,
+		columnas_totales,
+	)
+
+	column_order = []
+	for der, izq in columnas_tabla.items():
+		column_order.extend([der, izq])
+
+	columnas_validas = []
+	for col in column_order:
+		if (
+			col in jugador_dict
+			and col in estadisticas_grupales["media"]
+			and col in estadisticas_grupales["std"]
+		):
+			columnas_validas.append(col)
+
+	if columnas_validas:
+		df_comparativo = pd.DataFrame(
+			[
+				jugador_dict,
+				estadisticas_grupales["media"],
+				estadisticas_grupales["std"],
+			]
+		)[columnas_validas]
+		
+		df_comparativo.index = [f"{jugador}", "Media", "Desviación Estándar"]
+		df_transpuesto = df_comparativo.T
+		df_transpuesto.index.name = "Métrica"
+	else:
+		df_transpuesto = pd.DataFrame()
+
+	figuras = [fig_multimovilidad]
+	if fig_radar_simple is not None:
+		figuras.append(fig_radar_simple)
+
+	return {
+		"figuras": figuras,
+		"tablas": {
+			"zscores": df_zscores,
+			"comparativa": df_transpuesto,
+		},
+	}
+
 def analizar_movilidad(df, datos_jugador, jugador, categoria):
 	"""Realiza el análisis completo de movilidad"""
 	

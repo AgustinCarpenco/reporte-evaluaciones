@@ -12,6 +12,187 @@ from utils.data_utils import (
 )
 from config.settings import PLOTLY_CONFIG, METRICAS_ZSCORE_FUERZA, METRICAS_ZSCORE_RADAR_SIMPLE
 
+
+def obtener_componentes_perfil_fuerza(df, datos_jugador, jugador, categoria, metricas_seleccionadas=None):
+	"""Obtiene figuras y tablas del perfil de fuerza SIN usar Streamlit.
+
+	Devuelve los mismos elementos conceptuales que se muestran en `analizar_fuerza`:
+	- Gráfico multifuerza
+	- Radar Z-Score simplificado
+	- Tabla resumen de Z-Scores
+	- Tabla comparativa jugador vs grupo
+
+	Parameters
+	----------
+	df : pd.DataFrame
+		DataFrame completo con todos los jugadores.
+	datos_jugador : pd.Series o dict
+		Fila correspondiente al jugador seleccionado.
+	jugador : str
+		Nombre del jugador.
+	categoria : str
+		Categoría del jugador.
+	metricas_seleccionadas : list[str] | None
+		Lista de métricas de fuerza seleccionadas ("CUAD", "WOLLIN", etc.). Si es None se usan las
+		mismas por defecto que en la vista de Streamlit.
+
+	Returns
+	-------
+	dict
+		{
+			"figuras": [fig_multifuerza, fig_radar_simple],
+			"tablas": {
+				"zscores": df_zscores,
+				"comparativa": df_transpuesto
+			}
+		}
+	"""
+
+	# === Configuración de métricas (igual que en analizar_fuerza) ===
+	metricas_disponibles = [
+		"CUAD",
+		"WOLLIN",
+		"IMTP",
+		"CMJ Propulsiva",
+		"CMJ Frenado",
+		"TRIPLE SALTO",
+		"IMTP Total",
+		"CMJ FP Total",
+		"CMJ FF Total",
+	]
+	metricas_columnas = {
+		"CUAD": ("CUAD DER (N)", "CUAD IZQ (N)"),
+		"WOLLIN": ("WOLLIN DER", "WOLLIN IZQ"),
+		"IMTP": ("F PICO DER (IMTP) (N)", "F PICO IZQ (IMTP) (N)"),
+		"CMJ Propulsiva": ("FP DER (CMJ) (N)", "FP IZQ (CMJ) (N)"),
+		"CMJ Frenado": ("FF DER (CMJ) (N)", "FF IZQ (CMJ) (N)"),
+		"TRIPLE SALTO": ("TRIPLE SALTO DER", "TRIPLE SALTO IZQ"),
+		"IMTP Total": ("F PICO (IMTP) (N)", "F PICO (IMTP) (N)"),
+		"CMJ FP Total": ("FP (CMJ) (N)", "FP (CMJ) (N)"),
+		"CMJ FF Total": ("FF (CMJ) (N)", "FF (CMJ) (N)"),
+	}
+
+	if metricas_seleccionadas is None:
+		metricas_seleccionadas = ["CUAD", "WOLLIN", "IMTP", "CMJ Propulsiva"]
+
+	# === FIGURA: Gráfico multifuerza ===
+	datos_jugador_dict = datos_jugador.to_dict() if hasattr(datos_jugador, "to_dict") else dict(datos_jugador)
+	fig_multifuerza = crear_grafico_multifuerza(
+		datos_jugador_dict,
+		tuple(metricas_seleccionadas),
+		metricas_columnas,
+	)
+
+	# === RADAR Z-SCORE SIMPLIFICADO ===
+	df_categoria = procesar_datos_categoria(df, categoria)
+	estadisticas_radar = calcular_zscores_radar_simple(df_categoria, METRICAS_ZSCORE_RADAR_SIMPLE)
+	fig_radar_simple = None
+	df_zscores = pd.DataFrame()
+
+	if estadisticas_radar:
+		zscores_radar = generar_zscores_radar_simple(
+			datos_jugador,
+			estadisticas_radar,
+			METRICAS_ZSCORE_RADAR_SIMPLE,
+		)
+
+		# Crear figura de radar
+		fig_radar_simple = crear_radar_zscore_simple(zscores_radar, jugador)
+
+		# Construir tabla resumen de Z-Scores (equivalente a los cuadros debajo del radar)
+		filas = []
+		for metrica, data in zscores_radar.items():
+			zscore = data["zscore"]
+			valor = data["valor_original"]
+
+			if zscore >= 1.0:
+				categoria_nivel = "Superior"
+			elif zscore >= 0.0:
+				categoria_nivel = "Promedio+"
+			elif zscore >= -1.0:
+				categoria_nivel = "Promedio-"
+			else:
+				categoria_nivel = "Inferior"
+
+			filas.append(
+				{
+					"Métrica": metrica,
+					"Z-Score": zscore,
+					"Valor": valor,
+					"Categoría": categoria_nivel,
+				}
+			)
+
+		if filas:
+			df_zscores = pd.DataFrame(filas).set_index("Métrica")
+
+	# === TABLA COMPARATIVA JUGADOR VS GRUPO ===
+	columnas_tabla = {
+		"CUAD DER (N)": "CUAD IZQ (N)",
+		"WOLLIN DER": "WOLLIN IZQ",
+		"F PICO DER (IMTP) (N)": "F PICO IZQ (IMTP) (N)",
+		"FP DER (CMJ) (N)": "FP IZQ (CMJ) (N)",
+		"FF DER (CMJ) (N)": "FF IZQ (CMJ) (N)",
+		"TRIPLE SALTO DER": "TRIPLE SALTO IZQ",
+	}
+	columnas_totales = ["F PICO (IMTP) (N)", "FP (CMJ) (N)", "FF (CMJ) (N)"]
+
+	categorias_disponibles = df["categoria"].value_counts()
+	categoria_base = categorias_disponibles.index[0]
+	df_categoria_base = procesar_datos_categoria(df, categoria_base)
+	estadisticas_grupales = calcular_estadisticas_completas_categoria(
+		df_categoria_base,
+		columnas_tabla,
+		columnas_totales,
+	)
+
+	jugador_dict = preparar_datos_jugador_completo(
+		datos_jugador_dict,
+		columnas_tabla,
+		columnas_totales,
+	)
+
+	column_order = []
+	for der, izq in columnas_tabla.items():
+		column_order.extend([der, izq])
+	column_order.extend(columnas_totales)
+
+	columnas_validas = []
+	for col in column_order:
+		if (
+			col in jugador_dict
+			and col in estadisticas_grupales["media"]
+			and col in estadisticas_grupales["std"]
+		):
+			columnas_validas.append(col)
+
+	if columnas_validas:
+		df_comparativo = pd.DataFrame(
+			[
+				jugador_dict,
+				estadisticas_grupales["media"],
+				estadisticas_grupales["std"],
+			]
+		)[columnas_validas]
+		
+		df_comparativo.index = [f"{jugador}", "Media", "Desviación Estándar"]
+		df_transpuesto = df_comparativo.T
+		df_transpuesto.index.name = "Métrica"
+	else:
+		df_transpuesto = pd.DataFrame()
+
+	figuras = [fig_multifuerza]
+	if fig_radar_simple is not None:
+		figuras.append(fig_radar_simple)
+
+	return {
+		"figuras": figuras,
+		"tablas": {
+			"zscores": df_zscores,
+			"comparativa": df_transpuesto,
+		},
+	}
+
 def analizar_fuerza(df, datos_jugador, jugador, categoria):
 	"""Realiza el análisis completo de fuerza"""
 	

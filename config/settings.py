@@ -49,9 +49,6 @@ METRICAS_POR_SECCION = {
 		"AKE DER": "AKE IZQ",
 		"THOMAS DER": "THOMAS IZQ",
 		"LUNGE DER": "LUNGE IZQ"
-	},
-	"Funcionalidad": {
-		"TRIPLE SALTO DER": "TRIPLE SALTO IZQ"
 	}
 }
 

@@ -19,6 +19,7 @@ from typing import List
 
 import base64
 import io
+import pandas as pd
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -27,8 +28,8 @@ try:
 except ModuleNotFoundError:
 	HTML = None  # Se validará en tiempo de ejecución
 
-from modules.fuerza_analysis import obtener_componentes_perfil_fuerza
-from modules.movilidad_analysis import obtener_componentes_perfil_movilidad
+from modules.fuerza_analysis import obtener_componentes_perfil_fuerza, obtener_componentes_perfil_fuerza_grupal
+from modules.movilidad_analysis import obtener_componentes_perfil_movilidad, obtener_componentes_perfil_movilidad_grupal
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,6 +42,7 @@ class ReporteJugadorContexto:
     categoria: str
     fecha: str
     seccion: str  # "Fuerza" o "Movilidad"
+    vista: str    # "Perfil del Jugador", "Perfil del Grupo", etc.
     graficos_paths: List[str]
     tablas_html: List[str]
 
@@ -78,6 +80,7 @@ def renderizar_html_reporte(contexto: ReporteJugadorContexto, plantilla: str = "
         categoria=contexto.categoria,
         fecha=contexto.fecha,
         seccion=contexto.seccion,
+        vista=contexto.vista,
         graficos_paths=contexto.graficos_paths,
         tablas_html=contexto.tablas_html,
     )
@@ -127,15 +130,75 @@ def construir_contexto_reporte_perfil(
     jugador: str,
     categoria: str,
     seccion: str,
+    vista: str,
     fecha: str,
 ) -> ReporteJugadorContexto:
 
-    if seccion == "Fuerza":
-        componentes = obtener_componentes_perfil_fuerza(df, datos_jugador, jugador, categoria)
-    elif seccion == "Movilidad":
-        componentes = obtener_componentes_perfil_movilidad(df, datos_jugador, jugador, categoria)
+    # Preparar datos base en formato dict para poder modificarlos según la vista
+    if hasattr(datos_jugador, "to_dict"):
+        datos_dict = datos_jugador.to_dict()
     else:
-        raise ValueError(f"Sección no soportada para reporte PDF: {seccion}")
+        datos_dict = dict(datos_jugador)
+
+    # Definir columnas principales de fuerza y movilidad
+    columnas_fuerza = [
+        "CUAD DER (N)",
+        "CUAD IZQ (N)",
+        "WOLLIN DER",
+        "WOLLIN IZQ",
+        "F PICO DER (IMTP) (N)",
+        "F PICO IZQ (IMTP) (N)",
+        "FP DER (CMJ) (N)",
+        "FP IZQ (CMJ) (N)",
+        "FF DER (CMJ) (N)",
+        "FF IZQ (CMJ) (N)",
+        "TRIPLE SALTO DER",
+        "TRIPLE SALTO IZQ",
+        "F PICO (IMTP) (N)",
+        "FP (CMJ) (N)",
+        "FF (CMJ) (N)",
+    ]
+
+    columnas_movilidad = [
+        "AKE DER",
+        "AKE IZQ",
+        "THOMAS DER",
+        "THOMAS IZQ",
+        "LUNGE DER",
+        "LUNGE IZQ",
+    ]
+
+    # Si estamos en PERFIL DEL GRUPO, usar componentes específicos de grupo
+    if vista == "Perfil del Grupo" and seccion == "Fuerza":
+        componentes = obtener_componentes_perfil_fuerza_grupal(df, categoria)
+    elif vista == "Perfil del Grupo" and seccion == "Movilidad":
+        componentes = obtener_componentes_perfil_movilidad_grupal(df, categoria)
+    else:
+        # Para las vistas basadas en jugador (Perfil del Jugador, Comparación), mantenemos la lógica individual
+        pass
+
+        # Validación básica de datos para evitar PDFs "vacíos" en Fuerza
+        if seccion == "Fuerza":
+            valores_validos = []
+            for col in columnas_fuerza:
+                if col in datos_dict:
+                    valor = datos_dict[col]
+                    try:
+                        valor_float = float(valor)
+                    except (TypeError, ValueError):
+                        continue
+                    if valor_float != 0.0:
+                        valores_validos.append(valor_float)
+            if not valores_validos:
+                raise ValueError(
+                    "Sin datos de fuerza válidos para este jugador. Verifica que las métricas de fuerza estén cargadas antes de exportar el PDF."
+                )
+
+            componentes = obtener_componentes_perfil_fuerza(df, datos_dict, jugador, categoria)
+        elif seccion == "Movilidad":
+            componentes = obtener_componentes_perfil_movilidad(df, datos_dict, jugador, categoria)
+        else:
+            raise ValueError(f"Sección no soportada para reporte PDF: {seccion}")
 
     figuras = componentes.get("figuras", [])
     tablas = componentes.get("tablas", {})
@@ -143,7 +206,14 @@ def construir_contexto_reporte_perfil(
     graficos_paths = [_fig_to_data_uri(fig) for fig in figuras]
 
     tablas_html: List[str] = []
-    for key in ["zscores", "comparativa"]:
+
+    # Seleccionar qué tablas incluir según la vista/sección
+    if vista == "Perfil del Grupo" and seccion in ("Fuerza", "Movilidad"):
+        keys_tablas = ["comparativa_grupal"]
+    else:
+        keys_tablas = ["zscores", "comparativa"]
+
+    for key in keys_tablas:
         df_tabla = tablas.get(key)
         if df_tabla is not None and not df_tabla.empty:
             tablas_html.append(df_tabla.to_html(classes="tabla-metrica", border=0))
@@ -153,6 +223,7 @@ def construir_contexto_reporte_perfil(
         categoria=categoria,
         fecha=fecha,
         seccion=seccion,
+        vista=vista,
         graficos_paths=graficos_paths,
         tablas_html=tablas_html,
     )

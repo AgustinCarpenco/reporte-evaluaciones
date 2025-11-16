@@ -51,7 +51,7 @@ def main():
 	# Cargar datos
 	df = cargar_datos_optimizado(DATA_PATH)
 	
-	# Crear sidebar y obtener selecciones
+	# Crear sidebar y obtener selecciones (el botón de exportar ahora está dentro de la sidebar)
 	categoria, jugador, vista, seccion, exportar = crear_sidebar(df)
 	
 	# Crear header principal
@@ -110,37 +110,6 @@ def main():
 	
 	# Footer
 	crear_footer()
-	
-	# Manejo del botón exportar (solo Perfil del Jugador)
-	if exportar and vista == "Perfil del Jugador":
-		try:
-			# Obtener datos actualizados del jugador
-			datos_jugador_export = df[(df["categoria"] == categoria) & (df["Deportista"] == jugador)].iloc[0]
-			# Extraer fecha desde la columna 'Fecha'
-			fecha_valor = datos_jugador_export.get("Fecha", "")
-			if hasattr(fecha_valor, "strftime"):
-				fecha_str = fecha_valor.strftime("%d/%m/%Y")
-			else:
-				fecha_str = str(fecha_valor)
-
-			contexto = construir_contexto_reporte_perfil(
-				df=df,
-				datos_jugador=datos_jugador_export,
-				jugador=jugador,
-				categoria=categoria,
-				seccion=seccion,
-				fecha=fecha_str,
-			)
-			pdf_bytes = generar_pdf_reporte(contexto)
-
-			st.download_button(
-				label="📄 Descargar informe en PDF",
-				data=pdf_bytes,
-				file_name=f"{jugador}_{seccion}_perfil.pdf",
-				mime="application/pdf",
-			)
-		except Exception as e:
-			st.error(f"No se pudo generar el PDF del reporte: {e}")
 
 if __name__ == "__main__":
 	main()

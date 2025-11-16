@@ -193,6 +193,159 @@ def obtener_componentes_perfil_fuerza(df, datos_jugador, jugador, categoria, met
 		},
 	}
 
+
+def obtener_componentes_perfil_fuerza_grupal(df, categoria, metricas_seleccionadas=None):
+	"""Obtiene figuras y tabla del perfil de fuerza GRUPAL SIN usar Streamlit.
+
+	Reproduce los mismos elementos conceptuales que se muestran en `analizar_fuerza_grupal`:
+	- Gráfico multifuerza grupal (medias bilaterales y totales)
+	- Gráfico de distribución grupal (medias totales)
+	- Tabla grupal (media y desviación estándar por métrica)
+	"""
+
+	# Configuración de métricas igual que en analizar_fuerza_grupal
+	metricas_disponibles = [
+		"CUAD",
+		"WOLLIN",
+		"IMTP",
+		"CMJ Propulsiva",
+		"CMJ Frenado",
+		"TRIPLE SALTO",
+		"IMTP Total",
+		"CMJ FP Total",
+		"CMJ FF Total",
+	]
+	metricas_display = [
+		"CUAD",
+		"WOLLIN",
+		"IMTP",
+		"CMJ Propulsiva",
+		"CMJ Frenado",
+		"TRIPLE SALTO",
+		"IMTP Total",
+		"CMJ FP Total",
+		"CMJ FF Total",
+	]
+	metricas_columnas = {
+		"CUAD": ("CUAD DER (N)", "CUAD IZQ (N)"),
+		"WOLLIN": ("WOLLIN DER", "WOLLIN IZQ"),
+		"IMTP": ("F PICO DER (IMTP) (N)", "F PICO IZQ (IMTP) (N)"),
+		"CMJ Propulsiva": ("FP DER (CMJ) (N)", "FP IZQ (CMJ) (N)"),
+		"CMJ Frenado": ("FF DER (CMJ) (N)", "FF IZQ (CMJ) (N)"),
+		"TRIPLE SALTO": ("TRIPLE SALTO DER", "TRIPLE SALTO IZQ"),
+		"IMTP Total": ("F PICO (IMTP) (N)", "F PICO (IMTP) (N)"),
+		"CMJ FP Total": ("FP (CMJ) (N)", "FP (CMJ) (N)"),
+		"CMJ FF Total": ("FF (CMJ) (N)", "FF (CMJ) (N)"),
+	}
+
+	if metricas_seleccionadas is None:
+		metricas_seleccionadas = ["CUAD", "WOLLIN", "IMTP", "CMJ Propulsiva"]
+
+	# Procesar datos de la categoría
+	df_categoria = procesar_datos_categoria(df, categoria)
+
+	# Calcular estadísticas grupales para las métricas seleccionadas
+	estadisticas_grupales = {}
+	for metrica in metricas_seleccionadas:
+		col_der, col_izq = metricas_columnas[metrica]
+
+		if metrica in ["IMTP Total", "CMJ FP Total", "CMJ FF Total"]:
+			col_total = col_der
+			if col_total in df_categoria.columns:
+				valores_total = pd.to_numeric(df_categoria[col_total], errors="coerce").dropna()
+				if len(valores_total) > 0:
+					estadisticas_grupales[metrica] = {
+						"media_total": round(valores_total.mean(), 1),
+						"std_total": round(valores_total.std(), 1) if len(valores_total) > 1 else 0.0,
+						"n_jugadores": len(valores_total),
+					}
+		else:
+			valores_der = pd.to_numeric(df_categoria.get(col_der, []), errors="coerce").dropna()
+			valores_izq = pd.to_numeric(df_categoria.get(col_izq, []), errors="coerce").dropna()
+
+			if len(valores_der) > 0 and len(valores_izq) > 0:
+				estadisticas_grupales[metrica] = {
+					"media_der": round(valores_der.mean(), 1),
+					"media_izq": round(valores_izq.mean(), 1),
+					"std_der": round(valores_der.std(), 1) if len(valores_der) > 1 else 0.0,
+					"std_izq": round(valores_izq.std(), 1) if len(valores_izq) > 1 else 0.0,
+					"n_jugadores": min(len(valores_der), len(valores_izq)),
+				}
+
+	# Gráfico de barras grupal
+	fig_multifuerza_grupal = crear_grafico_multifuerza_grupal(
+		estadisticas_grupales,
+		tuple(metricas_seleccionadas),
+		categoria,
+	)
+
+	# Gráfico de distribución grupal (usa las mismas métricas que en analizar_fuerza_grupal)
+	estadisticas_radar_grupal = calcular_estadisticas_distribucion_grupal(
+		df_categoria,
+		METRICAS_ZSCORE_RADAR_SIMPLE,
+	)
+	fig_distribucion_grupal = None
+	if estadisticas_radar_grupal:
+		fig_distribucion_grupal = crear_grafico_distribucion_grupal(
+			estadisticas_radar_grupal,
+			categoria,
+		)
+
+	# Tabla comparativa grupal (media y desviación estándar)
+	columnas_tabla = {
+		"CUAD DER (N)": "CUAD IZQ (N)",
+		"WOLLIN DER": "WOLLIN IZQ",
+		"F PICO DER (IMTP) (N)": "F PICO IZQ (IMTP) (N)",
+		"FP DER (CMJ) (N)": "FP IZQ (CMJ) (N)",
+		"FF DER (CMJ) (N)": "FF IZQ (CMJ) (N)",
+		"TRIPLE SALTO DER": "TRIPLE SALTO IZQ",
+	}
+	columnas_totales = ["F PICO (IMTP) (N)", "FP (CMJ) (N)", "FF (CMJ) (N)"]
+
+	estadisticas_grupales_tabla = calcular_estadisticas_completas_categoria(
+		df_categoria,
+		columnas_tabla,
+		columnas_totales,
+	)
+
+	column_order = []
+	for der, izq in columnas_tabla.items():
+		column_order.extend([der, izq])
+	column_order.extend(columnas_totales)
+
+	columnas_validas = []
+	for col in column_order:
+		if (
+			col in estadisticas_grupales_tabla["media"]
+			and col in estadisticas_grupales_tabla["std"]
+		):
+			columnas_validas.append(col)
+
+	if columnas_validas:
+		df_comparativo_grupal = pd.DataFrame(
+			[
+				estadisticas_grupales_tabla["media"],
+				estadisticas_grupales_tabla["std"],
+			]
+		)[columnas_validas]
+		
+		df_comparativo_grupal.index = ["Media Grupal", "Desviación Estándar"]
+		df_transpuesto_grupal = df_comparativo_grupal.T
+		df_transpuesto_grupal.index.name = "Métrica"
+	else:
+		df_transpuesto_grupal = pd.DataFrame()
+
+	figuras = [fig_multifuerza_grupal]
+	if fig_distribucion_grupal is not None:
+		figuras.append(fig_distribucion_grupal)
+
+	return {
+		"figuras": figuras,
+		"tablas": {
+			"comparativa_grupal": df_transpuesto_grupal,
+		},
+	}
+
 def analizar_fuerza(df, datos_jugador, jugador, categoria):
 	"""Realiza el análisis completo de fuerza"""
 	

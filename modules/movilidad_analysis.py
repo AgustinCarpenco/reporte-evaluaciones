@@ -4,18 +4,20 @@ Módulo de análisis de movilidad
 
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
 from visualizations.charts import (
 	crear_grafico_multimovilidad,
 	crear_radar_zscore_simple_movilidad,
 	crear_grafico_multimovilidad_comparativo,
 	crear_radar_zscore_comparativo,
+	crear_grafico_multimovilidad_grupal,
 )
 from utils.data_utils import (
 	procesar_datos_categoria, calcular_estadisticas_categoria, preparar_datos_jugador,
 	calcular_zscores_automaticos, generar_zscores_jugador, calcular_zscores_radar_simple, generar_zscores_radar_simple,
 	calcular_estadisticas_completas_categoria, preparar_datos_jugador_completo, calcular_estadisticas_distribucion_grupal
 )
-from config.settings import PLOTLY_CONFIG, METRICAS_ZSCORE_MOVILIDAD
+from config.settings import PLOTLY_CONFIG, METRICAS_ZSCORE_MOVILIDAD, COLORES, ESCUDO_PATH
 
 
 def obtener_componentes_perfil_movilidad(df, datos_jugador, jugador, categoria, metricas_seleccionadas=None):
@@ -175,6 +177,233 @@ def obtener_componentes_perfil_movilidad(df, datos_jugador, jugador, categoria, 
 		"tablas": {
 			"zscores": df_zscores,
 			"comparativa": df_transpuesto,
+		},
+	}
+
+
+def obtener_componentes_perfil_movilidad_grupal(df, categoria, metricas_seleccionadas=None):
+	"""Obtiene figuras y tabla del perfil de movilidad GRUPAL SIN usar Streamlit.
+
+	Reproduce los elementos clave de `analizar_movilidad_grupal`:
+	- Gráfico multimovilidad grupal (medias bilaterales)
+	- Tabla grupal (media y desviación estándar por métrica)
+	"""
+
+	# Configuración de métricas igual que en analizar_movilidad_grupal
+	metricas_disponibles = ["AKE", "THOMAS", "LUNGE"]
+	metricas_display = ["AKE", "THOMAS", "LUNGE"]
+	metricas_columnas = {
+		"AKE": ("AKE DER", "AKE IZQ"),
+		"THOMAS": ("THOMAS DER", "THOMAS IZQ"),
+		"LUNGE": ("LUNGE DER", "LUNGE IZQ"),
+	}
+
+	if metricas_seleccionadas is None:
+		metricas_seleccionadas = ["AKE", "THOMAS", "LUNGE"]
+
+	# Procesar datos de la categoría
+	df_categoria = procesar_datos_categoria(df, categoria)
+
+	# Calcular estadísticas grupales para las métricas seleccionadas
+	estadisticas_grupales = {}
+	for metrica in metricas_seleccionadas:
+		col_der, col_izq = metricas_columnas[metrica]
+
+		valores_der = pd.to_numeric(df_categoria.get(col_der, []), errors="coerce").dropna()
+		valores_izq = pd.to_numeric(df_categoria.get(col_izq, []), errors="coerce").dropna()
+
+		if len(valores_der) > 0 and len(valores_izq) > 0:
+			estadisticas_grupales[metrica] = {
+				"media_der": round(valores_der.mean(), 1),
+				"media_izq": round(valores_izq.mean(), 1),
+				"std_der": round(valores_der.std(), 1) if len(valores_der) > 1 else 0.0,
+				"std_izq": round(valores_izq.std(), 1) if len(valores_izq) > 1 else 0.0,
+				"n_jugadores": min(len(valores_der), len(valores_izq)),
+			}
+
+	# Gráfico de barras grupal de movilidad
+	fig_multimovilidad_grupal = crear_grafico_multimovilidad_grupal(
+		estadisticas_grupales,
+		tuple(metricas_seleccionadas),
+		categoria,
+	)
+
+	# ===== Gráfico de DISTRIBUCIÓN GRUPAL de movilidad (similar a analizar_movilidad_grupal) =====
+	estadisticas_radar_grupal = {}
+	metricas_movilidad = {
+		"AKE": ("AKE DER", "AKE IZQ"),
+		"THOMAS": ("THOMAS DER", "THOMAS IZQ"),
+		"LUNGE": ("LUNGE DER", "LUNGE IZQ"),
+	}
+	for metrica, (col_der, col_izq) in metricas_movilidad.items():
+		if col_der in df_categoria.columns and col_izq in df_categoria.columns:
+			valores_der = pd.to_numeric(df_categoria[col_der], errors="coerce").dropna()
+			valores_izq = pd.to_numeric(df_categoria[col_izq], errors="coerce").dropna()
+			if len(valores_der) > 0 and len(valores_izq) > 0:
+				promedios = []
+				for i in range(min(len(valores_der), len(valores_izq))):
+					if pd.notna(valores_der.iloc[i]) and pd.notna(valores_izq.iloc[i]):
+						promedio = (valores_der.iloc[i] + valores_izq.iloc[i]) / 2
+						promedios.append(promedio)
+				if promedios:
+					serie_prom = pd.Series(promedios)
+					estadisticas_radar_grupal[f"{metrica}_PROMEDIO"] = {
+						"media": serie_prom.mean(),
+						"std": serie_prom.std() if len(serie_prom) > 1 else 0,
+						"minimo": serie_prom.min(),
+						"maximo": serie_prom.max(),
+						"n": len(serie_prom),
+						"label": metrica,
+					}
+
+	fig_distribucion_grupal = None
+	if estadisticas_radar_grupal:
+		metricas = []
+		medias = []
+		orden_metricas = ["AKE", "THOMAS", "LUNGE"]
+		for metrica in orden_metricas:
+			for _, stats in estadisticas_radar_grupal.items():
+				if stats["label"] == metrica:
+					metricas.append(metrica)
+					medias.append(stats["media"])
+					break
+		fig_distribucion_grupal = go.Figure()
+		fig_distribucion_grupal.add_trace(
+			go.Bar(
+				x=metricas,
+				y=medias,
+				name="Media del Grupo",
+				marker=dict(
+					color="rgba(220, 38, 38, 0.8)",
+					line=dict(color="rgba(220, 38, 38, 1)", width=2),
+				),
+				text=[f"{v:.0f}°" for v in medias],
+				textposition="outside",
+				textfont=dict(size=14, color="white", family="Roboto", weight="bold"),
+				hovertemplate="<b>%{x}</b><br>Media: %{y:.1f}°<extra></extra>",
+				hoverlabel=dict(
+					bgcolor="rgba(220, 38, 38, 0.9)",
+					bordercolor="rgba(220, 38, 38, 1)",
+					font=dict(color="white", family="Roboto"),
+				),
+			)
+		)
+		# Marca de agua del escudo
+		try:
+			from utils.ui_utils import get_base64_image
+			escudo_base64 = get_base64_image(ESCUDO_PATH)
+			fig_distribucion_grupal.add_layout_image(
+				{
+					"source": f"data:image/png;base64,{escudo_base64}",
+					"xref": "paper",
+					"yref": "paper",
+					"x": 0.95,
+					"y": 0.05,
+					"sizex": 0.15,
+					"sizey": 0.15,
+					"xanchor": "right",
+					"yanchor": "bottom",
+					"opacity": 0.1,
+					"layer": "below",
+				},
+			)
+		except Exception:
+			pass
+		fig_distribucion_grupal.update_layout(
+			title=dict(
+				text=f"Distribución Grupal – {categoria}<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Métricas de Movilidad – Medias del Grupo</span>",
+				font=dict(size=18, family="Source Sans Pro", weight=600, color="rgba(220, 38, 38, 1)"),
+				y=0.94,
+				x=0.5,
+				xanchor="center",
+			),
+			xaxis=dict(
+				title=dict(text="Métrica", font=dict(size=14, family="Roboto"), standoff=20),
+				tickfont=dict(size=12, family="Roboto"),
+				showgrid=True,
+				gridwidth=1,
+				gridcolor="rgba(255,255,255,0.1)",
+				tickangle=0,
+				categoryorder="array",
+				categoryarray=metricas,
+			),
+			yaxis=dict(
+				title=dict(text="Movilidad (°)", font=dict(size=14, family="Roboto"), standoff=15),
+				tickfont=dict(size=12, family="Roboto"),
+				showgrid=True,
+				gridwidth=1,
+				gridcolor="rgba(255,255,255,0.1)",
+				zeroline=True,
+				zerolinewidth=2,
+				zerolinecolor="rgba(255,255,255,0.3)",
+			),
+			legend=dict(
+				orientation="h",
+				yanchor="bottom",
+				y=1.02,
+				xanchor="center",
+				x=0.5,
+				font=dict(size=12, family="Roboto"),
+				bgcolor="rgba(220, 38, 38, 0.2)",
+				bordercolor="rgba(220, 38, 38, 0.5)",
+				borderwidth=2,
+			),
+			plot_bgcolor=COLORES["fondo_oscuro"],
+			paper_bgcolor=COLORES["fondo_oscuro"],
+			font=dict(color="white", family="Roboto"),
+			height=600,
+			margin=dict(t=140, b=60, l=60, r=60),
+			showlegend=True,
+		)
+
+	# Tabla comparativa grupal (media y desviación estándar)
+	columnas_tabla = {
+		"AKE DER": "AKE IZQ",
+		"THOMAS DER": "THOMAS IZQ",
+		"LUNGE DER": "LUNGE IZQ",
+	}
+	columnas_totales = []  # No hay totales en movilidad
+
+	estadisticas_grupales_tabla = calcular_estadisticas_completas_categoria(
+		df_categoria,
+		columnas_tabla,
+		columnas_totales,
+	)
+
+	column_order = []
+	for der, izq in columnas_tabla.items():
+		column_order.extend([der, izq])
+
+	columnas_validas = []
+	for col in column_order:
+		if (
+			col in estadisticas_grupales_tabla["media"]
+			and col in estadisticas_grupales_tabla["std"]
+		):
+			columnas_validas.append(col)
+
+	if columnas_validas:
+		df_comparativo_grupal = pd.DataFrame(
+			[
+				estadisticas_grupales_tabla["media"],
+				estadisticas_grupales_tabla["std"],
+			]
+		)[columnas_validas]
+		
+		df_comparativo_grupal.index = ["Media Grupal", "Desviación Estándar"]
+		df_transpuesto_grupal = df_comparativo_grupal.T
+		df_transpuesto_grupal.index.name = "Métrica"
+	else:
+		df_transpuesto_grupal = pd.DataFrame()
+
+	figuras = [fig_multimovilidad_grupal]
+	if fig_distribucion_grupal is not None:
+		figuras.append(fig_distribucion_grupal)
+
+	return {
+		"figuras": figuras,
+		"tablas": {
+			"comparativa_grupal": df_transpuesto_grupal,
 		},
 	}
 

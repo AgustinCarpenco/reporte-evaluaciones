@@ -230,10 +230,12 @@
 
 		<div class="info-panel">
 			<div class="info-grid">
+				{% if vista != 'Perfil del Grupo' %}
 				<div class="info-row">
 					<div class="info-label">Jugador</div>
 					<div class="info-value">{{ nombre_jugador }}</div>
 				</div>
+				{% endif %}
 				<div class="info-row">
 					<div class="info-label">Categoría</div>
 					<div class="info-value">
@@ -246,7 +248,17 @@
 				</div>
 				<div class="info-row">
 					<div class="info-label">Perfil</div>
-					<div class="info-value">Perfil del Jugador – {{ seccion }}</div>
+					<div class="info-value">
+						{% if vista == 'Perfil del Jugador' %}
+							Perfil del Jugador – {{ seccion }}
+						{% elif vista == 'Perfil del Grupo' %}
+							Perfil del Grupo – {{ seccion }}
+						{% elif vista == 'Comparación Jugador vs Grupo' %}
+							Comparación Jugador vs Grupo – {{ seccion }}
+						{% else %}
+							{{ vista }} – {{ seccion }}
+						{% endif %}
+					</div>
 				</div>
 			</div>
 		</div>

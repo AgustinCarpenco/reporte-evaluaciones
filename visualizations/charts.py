@@ -1967,30 +1967,19 @@ def crear_radar_zscore_comparativo(zscores_jugador, datos_grupo_radar, jugador_n
 			),
 			bgcolor=COLORES['fondo_oscuro']
 		),
-		showlegend=True,
-		legend=dict(
-			orientation="h",
-			yanchor="bottom",
-			y=1.02,
-			xanchor="center",
-			x=0.5,
-			font=dict(size=12, family="Roboto"),
-			bgcolor="rgba(220, 38, 38, 0.2)",
-			bordercolor="rgba(220, 38, 38, 0.5)",
-			borderwidth=2
-		),
+		showlegend=False,
 		title=dict(
-			text=f"<b style='color: rgba(220, 38, 38, 1); font-size: 24px;'>{jugador_nombre} vs {categoria_nombre}</b><br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Comparación Individual vs Media Grupal</span>",
+			text=f"<b style='color: rgba(220, 38, 38, 1); font-size: 24px;'>{jugador_nombre} vs Grupo</b><br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Comparación Individual vs Media Grupal</span>",
 			font=dict(size=20, color="white", family="Source Sans Pro", weight=600),
 			x=0.5,
 			xanchor="center",
-			y=0.95
+			y=0.96
 		),
 		plot_bgcolor=COLORES['fondo_oscuro'],
 		paper_bgcolor=COLORES['fondo_oscuro'],
 		font=dict(color="white", family="Source Sans Pro"),
-		height=650,  # Más alto para acomodar leyenda
-		margin=dict(t=120, b=100, l=80, r=80)  # Márgenes ajustados para leyenda
+		height=650,
+		margin=dict(t=110, b=80, l=80, r=80)
 	)
 	
 	return fig

@@ -1119,7 +1119,7 @@ def analizar_movilidad_comparativo(df, datos_jugador, jugador, categoria):
 		<div style='background: linear-gradient(90deg, rgba(220, 38, 38, 0.8), rgba(17, 24, 39, 0.8));
 					border-left: 4px solid rgba(220, 38, 38, 1); padding: 15px; border-radius: 8px;'>
 				<h4 style='margin: 0; color: white; font-family: "Source Sans Pro", sans-serif; font-weight: 600; font-size: 1.5rem; line-height: 1.2; padding: 0.75rem 0 1rem;'>
-					Tabla Comparativa - {jugador} vs {categoria}
+					Tabla comparativa – {jugador} vs Grupo
 				</h4>
 			</div>
 		""",
@@ -1154,7 +1154,7 @@ def analizar_movilidad_comparativo(df, datos_jugador, jugador, categoria):
 
 				tabla_comparativa[metrica] = {
 					f"{jugador}": f"{promedio_jugador:.1f}°",
-					f"Media {categoria}": f"{promedio_grupo:.1f}°",
+					"Media grupo": f"{promedio_grupo:.1f}°",
 					"Diferencia": f"{diferencia:+.1f}°",
 					"% vs Grupo": f"{porcentaje:+.1f}%",
 				}

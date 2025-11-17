@@ -179,7 +179,7 @@ def crear_grafico_multifuerza(datos_jugador_dict, metricas_seleccionadas, metric
 		bargap=0.3,
 		bargroupgap=0.1,
 		title=dict(
-			text="Evaluación Física Integral – Atlético Colón<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Métricas de Fuerza – Bilaterales y Totales</span>",
+			text="Fuerza – Perfil individual<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Métricas bilaterales y totales (N)</span>",
 			font=dict(size=18, family="Source Sans Pro", weight=600, color="rgba(220, 38, 38, 1)"),
 			y=0.94,
 			x=0.5,
@@ -447,7 +447,7 @@ def crear_grafico_multimovilidad_comparativo(datos_jugador_dict, estadisticas_gr
 		bargap=0.2,
 		bargroupgap=0.05,
 		title=dict(
-			text=f"Comparación {jugador_nombre} vs Grupo<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Métricas de Movilidad – Individual vs Media Grupal</span>",
+			text="Movilidad – Comparación jugador vs grupo<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Jugador individual vs media grupal (°)</span>",
 			font=dict(size=18, family="Source Sans Pro", weight=600, color="rgba(220, 38, 38, 1)"),
 			y=0.94,
 			x=0.5,
@@ -670,7 +670,7 @@ def crear_radar_zscore_automatico(zscores_jugador, jugador_nombre):
 		),
 		showlegend=False,
 		title=dict(
-			text=f"⚽ Perfil Z-Score - {jugador_nombre} ⚽<br><span style='font-size:12px; color:rgba(255,255,255,0.7);'>Comparación vs Grupo de Referencia</span>",
+			text=f"Perfil Z-Score – {jugador_nombre}<br><span style='font-size:12px; color:rgba(255,255,255,0.7);'>Comparación vs Grupo de Referencia</span>",
 			font=dict(size=16, color="rgba(220, 38, 38, 1)", family="Roboto", weight="bold"),
 			x=0.5,
 			xanchor="center",
@@ -783,7 +783,7 @@ def crear_radar_zscore(datos_jugador_dict, jugador_nombre):
 		),
 		showlegend=False,
 		title=dict(
-			text=f"Perfil Z-Score - {jugador_nombre}",
+			text=f"Fuerza – Z-Score (legacy Excel)<br><span style='font-size:12px; color:rgba(255,255,255,0.7);'>{jugador_nombre}</span>",
 			font=dict(size=16, color="white", family="Roboto", weight="bold"),
 			x=0.5,
 			xanchor="center"
@@ -873,11 +873,7 @@ def crear_radar_zscore_simple(zscores_radar, jugador_nombre):
 		theta=etiquetas,
 		fill='toself',
 		name='Media del Grupo',
-		line=dict(
-			color="rgba(59, 130, 246, 0.6)", 
-			width=3,
-			dash='dash'
-		),
+		line=dict(color="rgba(59, 130, 246, 0.6)", width=3, dash="dash"),
 		fillcolor="rgba(59, 130, 246, 0.15)",
 		marker=dict(
 			size=8,
@@ -897,10 +893,7 @@ def crear_radar_zscore_simple(zscores_radar, jugador_nombre):
 		theta=etiquetas,
 		fill='toself',
 		name=jugador_nombre,
-		line=dict(
-			color="rgba(220, 38, 38, 1)", 
-			width=5
-		),
+		line=dict(color="rgba(220, 38, 38, 1)", width=5),
 		fillcolor="rgba(220, 38, 38, 0.4)",
 		marker=dict(
 			size=15,
@@ -945,7 +938,7 @@ def crear_radar_zscore_simple(zscores_radar, jugador_nombre):
 		),
 		showlegend=False,
 		title=dict(
-			text=f"<b style='color: rgba(220, 38, 38, 1); font-size: 24px;'>{jugador_nombre}</b><br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Perfil Z-Score vs Grupo</span>",
+			text=f"Fuerza – Radar Z-Score<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>{jugador_nombre} vs grupo</span>",
 			font=dict(size=20, color="white", family="Source Sans Pro", weight=600),
 			x=0.5,
 			xanchor="center",
@@ -1306,7 +1299,7 @@ def crear_radar_zscore_grupal(datos_grupo_radar, nombre_grupo):
 		),
 		showlegend=False,
 		title=dict(
-			text=f"<b style='color: rgba(220, 38, 38, 1); font-size: 24px;'>{nombre_grupo}</b><br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Perfil Grupal - Medias de Referencia</span>",
+			text=f"Fuerza – Perfil grupal de referencia<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>{nombre_grupo}</span>",
 			font=dict(size=20, color="white", family="Source Sans Pro", weight=600),
 			x=0.5,
 			xanchor="center",
@@ -1898,11 +1891,7 @@ def crear_radar_zscore_comparativo(zscores_jugador, datos_grupo_radar, jugador_n
 		theta=etiquetas,
 		fill='toself',
 		name=f'Media {categoria_nombre}',
-		line=dict(
-			color="rgba(59, 130, 246, 0.6)", 
-			width=4,
-			dash='dash'
-		),
+		line=dict(color="rgba(59, 130, 246, 0.6)", width=4, dash="dash"),
 		fillcolor="rgba(59, 130, 246, 0.15)",
 		marker=dict(
 			size=12,
@@ -1923,10 +1912,7 @@ def crear_radar_zscore_comparativo(zscores_jugador, datos_grupo_radar, jugador_n
 		theta=etiquetas,
 		fill='toself',
 		name=jugador_nombre,
-		line=dict(
-			color="rgba(220, 38, 38, 1)",  # Rojo original del club
-			width=5
-		),
+		line=dict(color="rgba(220, 38, 38, 1)", width=5),
 		fillcolor="rgba(220, 38, 38, 0.4)",
 		marker=dict(
 			size=15,
@@ -1969,7 +1955,7 @@ def crear_radar_zscore_comparativo(zscores_jugador, datos_grupo_radar, jugador_n
 		),
 		showlegend=False,
 		title=dict(
-			text=f"<b style='color: rgba(220, 38, 38, 1); font-size: 24px;'>{jugador_nombre} vs Grupo</b><br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Comparación Individual vs Media Grupal</span>",
+			text=f"Fuerza – Radar comparativo<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>{jugador_nombre} vs {categoria_nombre}</span>",
 			font=dict(size=20, color="white", family="Source Sans Pro", weight=600),
 			x=0.5,
 			xanchor="center",
@@ -2115,7 +2101,7 @@ def crear_grafico_multimovilidad(datos_jugador_dict, metricas_seleccionadas, met
 		bargap=0.3,
 		bargroupgap=0.1,
 		title=dict(
-			text="Evaluación Física Integral – Atlético Colón<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Métricas de Movilidad – Bilaterales</span>",
+			text="Movilidad – Perfil individual<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Métricas bilaterales (°)</span>",
 			font=dict(size=18, family="Source Sans Pro", weight=600, color="rgba(220, 38, 38, 1)"),
 			y=0.94,
 			x=0.5,
@@ -2252,11 +2238,7 @@ def crear_radar_zscore_simple_movilidad(zscores_radar, jugador_nombre):
 		theta=etiquetas,
 		fill='toself',
 		name='Media del Grupo',
-		line=dict(
-			color="rgba(59, 130, 246, 0.6)", 
-			width=3,
-			dash='dash'
-		),
+		line=dict(color="rgba(59, 130, 246, 0.6)", width=3, dash="dash"),
 		fillcolor="rgba(59, 130, 246, 0.15)",
 		marker=dict(
 			size=8,
@@ -2276,10 +2258,7 @@ def crear_radar_zscore_simple_movilidad(zscores_radar, jugador_nombre):
 		theta=etiquetas,
 		fill='toself',
 		name=jugador_nombre,
-		line=dict(
-			color="rgba(220, 38, 38, 1)", 
-			width=5
-		),
+		line=dict(color="rgba(220, 38, 38, 1)", width=5),
 		fillcolor="rgba(220, 38, 38, 0.4)",
 		marker=dict(
 			size=15,
@@ -2321,7 +2300,7 @@ def crear_radar_zscore_simple_movilidad(zscores_radar, jugador_nombre):
 		),
 		showlegend=False,
 		title=dict(
-			text=f"<b style='color: rgba(220, 38, 38, 1); font-size: 24px;'>{jugador_nombre}</b><br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>Perfil Z-Score Movilidad vs Grupo</span>",
+			text=f"Movilidad – Radar Z-Score<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>{jugador_nombre} vs grupo</span>",
 			font=dict(size=20, color="white", family="Source Sans Pro", weight=600),
 			x=0.5,
 			xanchor="center",

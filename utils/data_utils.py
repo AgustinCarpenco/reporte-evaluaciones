@@ -86,11 +86,8 @@ def cargar_evaluaciones_desde_drive():
 		)
 		service = build("drive", "v3", credentials=creds)
 		
-		# Exportar el Google Sheet como archivo Excel (.xlsx)
-		request = service.files().export(
-			fileId=file_id,
-			mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-		)
+		# Descargar el archivo binario tal cual está en Drive (Excel subido)
+		request = service.files().get_media(fileId=file_id)
 		data = request.execute()
 		buffer = io.BytesIO(data)
 		

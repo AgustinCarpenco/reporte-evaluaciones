@@ -7,6 +7,9 @@ import streamlit as st
 import json
 import hashlib
 import os
+import io
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 from config.settings import CACHE_TTL, DATA_PATH, DATA_PATH_DEMO, MAPEO_COLUMNAS_NUEVA_EVALUACION
 
 @st.cache_data(ttl=CACHE_TTL['datos_principales'], show_spinner="Cargando datos de evaluaciones...")
@@ -55,6 +58,62 @@ def cargar_evaluaciones(path_excel):
 	
 	return df_evaluacion
 
+
+@st.cache_data(ttl=CACHE_TTL['datos_principales'], show_spinner="Cargando datos desde Google Drive...")
+def cargar_evaluaciones_desde_drive():
+	"""Descarga el archivo de Google Drive y carga la hoja de evaluación.
+
+	Usa una service account configurada en st.secrets["google_service_account"] y
+	 el identificador del archivo en st.secrets["DRIVE_FILE_ID"].
+	"""
+	# Validar secretos necesarios
+	try:
+		service_info = dict(st.secrets["google_service_account"])
+		file_id = st.secrets.get("DRIVE_FILE_ID")
+	except Exception as e:
+		st.error("❌ No se encontraron las credenciales de Google Drive en st.secrets.")
+		st.stop()
+	
+	if not file_id:
+		st.error("❌ Falta 'DRIVE_FILE_ID' en st.secrets.")
+		st.stop()
+	
+	try:
+		# Crear credenciales de la service account
+		creds = service_account.Credentials.from_service_account_info(
+			service_info,
+			scopes=["https://www.googleapis.com/auth/drive.readonly"],
+		)
+		service = build("drive", "v3", credentials=creds)
+		
+		# Exportar el Google Sheet como archivo Excel (.xlsx)
+		request = service.files().export(
+			fileId=file_id,
+			mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		)
+		data = request.execute()
+		buffer = io.BytesIO(data)
+		
+		# Leer el contenido descargado como si fuera un Excel normal
+		df_evaluacion = pd.read_excel(
+			buffer,
+			sheet_name="EVALUACION 2910",
+			engine='openpyxl',
+			na_values=['', ' ', 'N/A', 'n/a', 'NULL', 'null'],
+		)
+	except Exception as e:
+		st.error(f"❌ Error al leer el archivo desde Google Drive: {str(e)}")
+		st.stop()
+	
+	# Mapear columna de jugadores para compatibilidad
+	if "JUGADOR" in df_evaluacion.columns:
+		df_evaluacion["Deportista"] = df_evaluacion["JUGADOR"]
+	
+	# Asignar categoría por defecto (igual que en cargar_evaluaciones)
+	df_evaluacion["categoria"] = "Evaluacion_2910"
+	
+	return df_evaluacion
+
 def cargar_datos_optimizado(path_excel=None):
 	"""Carga datos con optimización de session state.
 
@@ -66,7 +125,8 @@ def cargar_datos_optimizado(path_excel=None):
 	- Por defecto (si no está definido) → demo (seguro para repos públicos)
 	"""
 
-	# Resolver ruta del Excel si no se pasa explícitamente
+	# Resolver origen de datos si no se pasa un path explícito
+	usar_drive = False
 	if path_excel is None:
 		# Priorizar configuración desde secretos de Streamlit y luego variables de entorno
 		try:
@@ -78,14 +138,22 @@ def cargar_datos_optimizado(path_excel=None):
 		modo_datos = str(modo_datos).lower()
 		
 		if modo_datos == "real":
-			path_excel = DATA_PATH
+			# En modo real siempre usamos Google Drive (en producción)
+			usar_drive = True
+			path_excel = None
 		else:
 			# Cualquier otro valor cae a modo demo por seguridad
 			path_excel = DATA_PATH_DEMO
-		
+	else:
+		# Si el caller pasa un path explícito, respetarlo y no usar Drive
+		usar_drive = False
+	
 	# Cache en session_state para evitar recargas innecesarias
 	if 'df_cache' not in st.session_state or st.session_state.df_cache is None:
-		st.session_state.df_cache = cargar_evaluaciones(path_excel)
+		if usar_drive:
+			st.session_state.df_cache = cargar_evaluaciones_desde_drive()
+		else:
+			st.session_state.df_cache = cargar_evaluaciones(path_excel)
 	return st.session_state.df_cache
 
 @st.cache_data(ttl=CACHE_TTL['jugadores_categoria'])

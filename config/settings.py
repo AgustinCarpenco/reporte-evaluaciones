@@ -8,6 +8,7 @@ import os
 # Rutas relativas para compatibilidad local y Streamlit Cloud
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(BASE_DIR, "data", "EVALUACIONES.xlsx")
+DATA_PATH_DEMO = os.path.join(BASE_DIR, "data", "EVALUACIONES_demo.xlsx")
 ESCUDO_PATH = os.path.join(BASE_DIR, "data", "escudo.png")
 
 # ========= CONFIGURACIÓN DE CACHE ==========

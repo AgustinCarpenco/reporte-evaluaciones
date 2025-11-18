@@ -7,7 +7,7 @@ import streamlit as st
 import json
 import hashlib
 import os
-from config.settings import CACHE_TTL, DATA_PATH, MAPEO_COLUMNAS_NUEVA_EVALUACION
+from config.settings import CACHE_TTL, DATA_PATH, DATA_PATH_DEMO, MAPEO_COLUMNAS_NUEVA_EVALUACION
 
 @st.cache_data(ttl=CACHE_TTL['datos_principales'], show_spinner="Cargando datos de evaluaciones...")
 def cargar_evaluaciones(path_excel):
@@ -15,7 +15,7 @@ def cargar_evaluaciones(path_excel):
 	# Validar que el archivo existe
 	if not os.path.exists(path_excel):
 		st.error(f"❌ No se encontró el archivo Excel en: {path_excel}")
-		st.info("💡 Asegúrate de que el archivo 'EVALUACIONES.xlsx' esté en la carpeta 'data/'")
+		st.info("💡 Asegúrate de que exista el archivo de datos correspondiente (por ejemplo 'EVALUACIONES.xlsx' o 'EVALUACIONES_demo.xlsx') en la carpeta 'data/'")
 		st.stop()
 	
 	try:
@@ -56,10 +56,34 @@ def cargar_evaluaciones(path_excel):
 	return df_evaluacion
 
 def cargar_datos_optimizado(path_excel=None):
-	"""Carga datos con optimización de session state"""
+	"""Carga datos con optimización de session state.
+
+	Si no se especifica un path explícito, elige entre datos DEMO o REALES
+	según la configuración de MODO_DATOS:
+
+	- MODO_DATOS = "real"  → usa DATA_PATH (EVALUACIONES.xlsx)
+	- MODO_DATOS = "demo"  → usa DATA_PATH_DEMO (EVALUACIONES_demo.xlsx)
+	- Por defecto (si no está definido) → demo (seguro para repos públicos)
+	"""
+
+	# Resolver ruta del Excel si no se pasa explícitamente
 	if path_excel is None:
-		path_excel = DATA_PATH
+		# Priorizar configuración desde secretos de Streamlit y luego variables de entorno
+		try:
+			modo_datos = st.secrets.get("MODO_DATOS", os.getenv("MODO_DATOS", "demo"))
+		except Exception:
+			# En entornos sin st.secrets definido
+			modo_datos = os.getenv("MODO_DATOS", "demo")
 		
+		modo_datos = str(modo_datos).lower()
+		
+		if modo_datos == "real":
+			path_excel = DATA_PATH
+		else:
+			# Cualquier otro valor cae a modo demo por seguridad
+			path_excel = DATA_PATH_DEMO
+		
+	# Cache en session_state para evitar recargas innecesarias
 	if 'df_cache' not in st.session_state or st.session_state.df_cache is None:
 		st.session_state.df_cache = cargar_evaluaciones(path_excel)
 	return st.session_state.df_cache

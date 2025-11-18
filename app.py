@@ -6,7 +6,6 @@ Club Atlético Colón
 import streamlit as st
 
 # Importar módulos refactorizados
-from config.settings import DATA_PATH
 from utils.ui_utils import inicializar_session_state, aplicar_estilos_css, crear_header_principal, crear_footer, configurar_tema_oscuro
 from utils.data_utils import cargar_datos_optimizado
 from components.sidebar import crear_sidebar
@@ -48,8 +47,8 @@ def main():
 	inicializar_session_state()
 	aplicar_estilos_css()
 	
-	# Cargar datos
-	df = cargar_datos_optimizado(DATA_PATH)
+	# Cargar datos (modo demo/real se resuelve dentro de cargar_datos_optimizado)
+	df = cargar_datos_optimizado()
 	
 	# Crear sidebar y obtener selecciones (el botón de exportar ahora está dentro de la sidebar)
 	categoria, jugador, vista, seccion, exportar = crear_sidebar(df)

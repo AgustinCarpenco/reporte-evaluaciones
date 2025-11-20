@@ -1955,7 +1955,7 @@ def crear_radar_zscore_comparativo(zscores_jugador, datos_grupo_radar, jugador_n
 		),
 		showlegend=False,
 		title=dict(
-			text=f"Fuerza – Radar comparativo<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>{jugador_nombre} vs {categoria_nombre}</span>",
+			text=f"Fuerza – Radar comparativo<br><span style='font-size:16px; color:rgba(255,255,255,0.8);'>{jugador_nombre} vs Grupo</span>",
 			font=dict(size=20, color="white", family="Source Sans Pro", weight=600),
 			x=0.5,
 			xanchor="center",

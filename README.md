@@ -8,13 +8,17 @@
 
 ## Instalación
 
+Desde la carpeta del proyecto (`/Users/agustin/reporte-evaluaciones`), se recomienda usar un entorno virtual para evitar conflictos con el Python del sistema (PEP 668 en macOS/Homebrew).
+
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
 ## Ejecución
 
-Desde la carpeta del proyecto:
+Con el entorno virtual activado (`(.venv)` al inicio de la línea de la terminal), desde la carpeta del proyecto:
 
 ```bash
 streamlit run app.py
